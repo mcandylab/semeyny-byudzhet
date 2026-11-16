@@ -297,7 +297,7 @@ function renderOverview(calc) {
     </div>
     <div class="notice"><span class="notice-dot"></span><div><strong>Сейчас в конвертах и на целях: ${money(calc.balances)}.</strong> Это уже имеющиеся деньги, они не прибавляются к свободному остатку от будущей зарплаты.</div></div>
     ${state.creditNote ? `<div class="section-heading"><div><h2>Мужу: порядок действий с кредитками</h2><p>Долги, лимиты и схема беспроцентного погашения</p></div><span class="pill gold">Важно</span></div><div class="card credit-note-card"><textarea class="comment-input" data-credit-note aria-label="Комментарий для мужа о кредитках">${escapeHtml(state.creditNote)}</textarea><p class="comment-hint">Текст можно редактировать. Чтобы передать изменение, создайте новую ссылку.</p></div>` : ""}
-    <div class="grid-two">${renderPaydayCard(calc.p5, calc.workdays.total)}${renderPaydayCard(calc.p20, calc.workdays.total)}</div>
+    <div class="grid-two">${renderPaydayCard(calc.p20, calc.workdays.total)}${renderPaydayCard(calc.p5, calc.workdays.total)}</div>
     <div class="section-heading"><div><h2>На что нужны деньги</h2><p>Цели, накопления и распределение свободного остатка</p></div><button class="button ghost small" data-tab="goals">Открыть цели</button></div>
     <div class="card goal-summary">
       <div><span>Общая сумма целей</span><strong>${money(calc.goalTarget)}</strong></div>
