@@ -70,6 +70,7 @@ function blankState() {
     workdays: {},
     expenses: [],
     balances: [],
+    goals: [],
     updatedAt: new Date().toISOString()
   };
 }
@@ -96,6 +97,13 @@ function normalizeState(value) {
       name: String(item.name || "Без названия"),
       amount: Math.max(0, Number(item.amount) || 0),
       category: CATEGORIES[item.category] ? item.category : "other"
+    })) : [],
+    goals: Array.isArray(value.goals) ? value.goals.map((item, index) => ({
+      id: String(item.id || `g${Date.now()}-${index}`),
+      name: String(item.name || "Новая цель"),
+      target: Math.max(0, Number(item.target) || 0),
+      saved: Math.max(0, Number(item.saved) || 0),
+      planned: Math.max(0, Number(item.planned) || 0)
     })) : [],
     updatedAt: value.updatedAt || new Date().toISOString()
   };
@@ -160,13 +168,23 @@ function calculate() {
   const date20 = new Date(year, monthNumber - 1, 20);
   const pay5 = adjustedPayday(date5);
   const pay20 = adjustedPayday(date20);
+  const goalTarget = state.goals.reduce((total, goal) => total + goal.target, 0);
+  const goalSaved = state.goals.reduce((total, goal) => total + goal.saved, 0);
+  const goalAllocated = state.goals.reduce((total, goal) => total + goal.planned, 0);
+  const goalRemaining = state.goals.reduce((total, goal) => total + Math.max(0, goal.target - goal.saved - goal.planned), 0);
+  const free = firstSalary + secondSalary - expenseSum5 - expenseSum20 - tithe5 - tithe20;
   return {
     workdays,
     salary: firstSalary + secondSalary,
     balances: sumItems(state.balances),
     expenses: expenseSum5 + expenseSum20,
     tithe: tithe5 + tithe20,
-    free: firstSalary + secondSalary - expenseSum5 - expenseSum20 - tithe5 - tithe20,
+    free,
+    goalTarget,
+    goalSaved,
+    goalAllocated,
+    goalRemaining,
+    unassigned: free - goalAllocated,
     p5: {
       payday: 5,
       salary: secondSalary,
@@ -273,10 +291,17 @@ function renderOverview(calc) {
       ${renderStat("Зарплата за месяц", calc.salary, `${calc.workdays.total} рабочих дней`, "accent")}
       ${renderStat("Постоянные расходы", calc.expenses, "Обе выплаты вместе")}
       ${renderStat("Десятина", calc.tithe, `${state.settings.titheRate}% от каждой выплаты`)}
-      ${renderStat("Свободный остаток", calc.free, "После расходов и десятины", calc.free < 0 ? "negative" : "")}
+      ${renderStat("Свободный остаток", calc.free, "Можно распределить на цели", calc.free < 0 ? "negative" : "")}
     </div>
     <div class="notice"><span class="notice-dot"></span><div><strong>Сейчас в конвертах и на целях: ${money(calc.balances)}.</strong> Это уже имеющиеся деньги, они не прибавляются к свободному остатку от будущей зарплаты.</div></div>
     <div class="grid-two">${renderPaydayCard(calc.p5, calc.workdays.total)}${renderPaydayCard(calc.p20, calc.workdays.total)}</div>
+    <div class="section-heading"><div><h2>На что нужны деньги</h2><p>Цели, накопления и распределение свободного остатка</p></div><button class="button ghost small" data-tab="goals">Открыть цели</button></div>
+    <div class="card goal-summary">
+      <div><span>Общая сумма целей</span><strong>${money(calc.goalTarget)}</strong></div>
+      <div><span>Уже отложено</span><strong>${money(calc.goalSaved)}</strong></div>
+      <div><span>Выделяем из свободных</span><strong>${money(calc.goalAllocated)}</strong></div>
+      <div><span>Ещё нужно собрать</span><strong>${money(calc.goalRemaining)}</strong></div>
+    </div>
     <div class="section-heading"><div><h2>Куда уходит зарплата</h2><p>Регулярные расходы по категориям, без десятины</p></div><span class="pill gold">Всего ${money(calc.expenses)}</span></div>
     <div class="card">
       ${categories.length ? `<div class="category-list">${categories.map(([category, amount]) => `<div class="category-row"><span>${CATEGORIES[category]}</span><div class="category-track"><span style="width:${amount / max * 100}%"></span></div><strong>${money(amount)}</strong></div>`).join("")}</div>` : `<div class="empty">Добавьте расходы, чтобы увидеть распределение по категориям.</div>`}
@@ -311,6 +336,36 @@ function renderItemsCard(items, kind, calc, payday = null) {
     </div>` : ""}
     <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th><th></th></tr></thead><tbody>${renderRows(items, kind)}</tbody></table></div>
     <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="${kind}" ${payday ? `data-payday="${payday}"` : ""}>+ Добавить позицию</button><div class="table-total">Итого<strong>${money(sumItems(items))}</strong></div></div>
+  </section>`;
+}
+
+function renderGoals(calc) {
+  const rows = state.goals.length ? state.goals.map(goal => {
+    const covered = goal.saved + goal.planned;
+    const remaining = goal.target - covered;
+    const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
+    return `<tr>
+      <td><input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></td>
+      <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></td>
+      <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></td>
+      <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Выделяем из свободных"></td>
+      <td class="goal-remaining"><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></td>
+      <td><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6"><div class="empty">Добавьте первую цель.</div></td></tr>`;
+  return `<section>
+    <div class="stats">
+      ${renderStat("На все цели", calc.goalTarget, `${state.goals.length} целей`, "accent")}
+      ${renderStat("Уже отложено", calc.goalSaved, "Деньги уже есть")}
+      ${renderStat("Выделяем сейчас", calc.goalAllocated, "Из свободного остатка")}
+      ${renderStat("Ещё нужно собрать", calc.goalRemaining, "После всех выделений")}
+    </div>
+    <div class="notice ${calc.unassigned < 0 ? "negative" : ""}"><span class="notice-dot"></span><div><strong>Свободно после расходов и десятины: ${money(calc.free)}.</strong> ${calc.unassigned >= 0 ? `После выделения на цели останется нераспределёнными ${money(calc.unassigned)}.` : `Распределено на ${money(Math.abs(calc.unassigned))} больше, чем есть свободных денег.`}</div></div>
+    <div class="card">
+      <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Все суммы можно редактировать. «Выделяем сейчас» уменьшает нераспределённый свободный остаток.</p></div><span class="pill">${state.goals.length} целей</span></div>
+      <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Выделяем сейчас, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Общая сумма целей<strong>${money(calc.goalTarget)}</strong></div></div>
+    </div>
   </section>`;
 }
 
@@ -367,12 +422,14 @@ function render() {
     ["pay5", "Выплата 5-го"],
     ["pay20", "Выплата 20-го"],
     ["balances", "Сейчас отложено"],
+    ["goals", "Цели"],
     ["settings", "Настройки"]
   ];
   let content;
   if (activeTab === "pay5") content = renderItemsCard(state.expenses.filter(item => item.payday === 5), "expenses", calc, 5);
   else if (activeTab === "pay20") content = renderItemsCard(state.expenses.filter(item => item.payday === 20), "expenses", calc, 20);
   else if (activeTab === "balances") content = renderItemsCard(state.balances, "balances", calc);
+  else if (activeTab === "goals") content = renderGoals(calc);
   else if (activeTab === "settings") content = renderSettings(calc);
   else content = renderOverview(calc);
 
@@ -400,7 +457,7 @@ function updateItem(target) {
   const item = collection.find(entry => entry.id === target.dataset.id);
   if (!item) return;
   const field = target.dataset.field;
-  if (field === "amount") item.amount = Math.max(0, Number(target.value) || 0);
+  if (["amount", "target", "saved", "planned"].includes(field)) item[field] = Math.max(0, Number(target.value) || 0);
   else if (field === "category" && CATEGORIES[target.value]) item.category = target.value;
   else if (field === "name") item.name = target.value.trim() || "Без названия";
   saveState();
@@ -528,7 +585,9 @@ document.addEventListener("click", event => {
     render();
   } else if (action === "add") {
     const kind = button.dataset.kind;
-    const item = { id: `${kind === "expenses" ? "e" : "b"}${Date.now()}`, name: "Новая позиция", amount: 0, category: "other" };
+    const item = kind === "goals"
+      ? { id: `g${Date.now()}`, name: "Новая цель", target: 0, saved: 0, planned: 0 }
+      : { id: `${kind === "expenses" ? "e" : "b"}${Date.now()}`, name: "Новая позиция", amount: 0, category: "other" };
     if (kind === "expenses") item.payday = Number(button.dataset.payday) === 20 ? 20 : 5;
     state[kind].push(item);
     saveState();

@@ -150,6 +150,20 @@ tr:hover .delete-button { opacity: 1; }
 .table-total { text-align: right; font-size: 13px; color: var(--muted); }
 .table-total strong { display: block; margin-top: 3px; color: var(--ink); font-size: 20px; }
 
+.goal-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.goal-summary > div { display: grid; gap: 7px; }
+.goal-summary span { color: var(--muted); font-size: 12px; }
+.goal-summary strong { font-size: 20px; letter-spacing: -.4px; }
+.notice.negative { color: var(--red); background: var(--red-soft); border-color: #e8c8c2; }
+.notice.negative strong { color: var(--red); }
+.notice.negative .notice-dot { background: var(--red); }
+.goals-table { min-width: 850px; }
+.goals-table th:nth-child(2), .goals-table th:nth-child(3), .goals-table th:nth-child(4) { text-align: right; }
+.goals-table td:nth-child(2), .goals-table td:nth-child(3), .goals-table td:nth-child(4) { width: 155px; }
+.goals-table td:nth-child(5) { width: 160px; }
+.goal-remaining strong { font-size: 13px; white-space: nowrap; }
+.goal-remaining .meter { margin: 8px 0 0; }
+
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .settings-form { display: grid; gap: 16px; }
 .field { display: grid; gap: 7px; }
@@ -207,6 +221,8 @@ tr:hover .delete-button { opacity: 1; }
   .table-footer { align-items: flex-end; }
   .section-heading { align-items: flex-start; flex-direction: column; }
   .workdays-inputs { grid-template-columns: 1fr; }
+  .goal-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 10px; }
+  .goal-summary strong { font-size: 17px; }
 }
 
 @media print {
