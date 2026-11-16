@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f35">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Семейный бюджет</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div id="app"></div>
+  <noscript>Для работы с бюджетом включите JavaScript в браузере.</noscript>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="share-dialog" class="dialog">
+    <form method="dialog" class="dialog-head">
+      <div>
+        <p class="eyebrow">Передать актуальную версию</p>
+        <h2>Ссылка на бюджет</h2>
+      </div>
+      <button class="icon-button" value="cancel" aria-label="Закрыть">×</button>
+    </form>
+    <p>В ссылке уже содержатся все текущие суммы и названия. Отправьте её мужу или жене. После новых изменений создайте и отправьте новую ссылку.</p>
+    <label class="field-label" for="share-url">Ссылка</label>
+    <textarea id="share-url" rows="5" readonly></textarea>
+    <div class="dialog-actions">
+      <button id="copy-share" class="button primary" type="button">Скопировать ссылку</button>
+      <button id="native-share" class="button secondary" type="button" hidden>Поделиться</button>
+    </div>
+    <p class="privacy-note">Ссылка открывает доступ к финансовым данным. Отправляйте её только членам семьи.</p>
+  </dialog>
+
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
+</body>
+</html>
