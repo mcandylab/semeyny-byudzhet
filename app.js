@@ -105,7 +105,8 @@ function normalizeState(value) {
       name: String(item.name || "Новая цель"),
       target: Math.max(0, Number(item.target) || 0),
       saved: Math.max(0, Number(item.saved) || 0),
-      planned: Math.max(0, Number(item.planned) || 0)
+      planned: Math.max(0, Number(item.planned) || 0),
+      dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : ""
     })) : [],
     purchases: Array.isArray(value.purchases) ? value.purchases.map((item, index) => ({
       id: String(item.id || `p${Date.now()}-${index}`),
@@ -162,6 +163,20 @@ function sumItems(items) {
   return items.reduce((total, item) => total + (Number(item.amount) || 0), 0);
 }
 
+function foodCalculation(payday, expenses, year, monthNumber) {
+  const budget = sumItems(expenses.filter(item => ["продукты", "еда"].includes(item.name.trim().toLowerCase())));
+  const start = payday === 5 ? new Date(year, monthNumber, 6) : new Date(year, monthNumber - 1, 21);
+  const end = payday === 5 ? new Date(year, monthNumber, 20) : new Date(year, monthNumber, 5);
+  const days = Math.round((end - start) / 86400000) + 1;
+  const nextMonthName = MONTHS_GENITIVE[monthNumber % 12];
+  return {
+    foodBudget: budget,
+    foodDays: days,
+    foodDaily: days ? Math.round(budget / days) : 0,
+    foodPeriod: payday === 5 ? `6–20 ${nextMonthName}` : `21 ${MONTHS_GENITIVE[monthNumber - 1]}–5 ${nextMonthName}`
+  };
+}
+
 function calculate() {
   const { year, month: monthNumber } = parseMonth(state.month);
   const workdays = getWorkdays(state.month);
@@ -184,6 +199,8 @@ function calculate() {
   const goalAllocated = state.goals.reduce((total, goal) => total + goal.planned, 0);
   const goalRemaining = state.goals.reduce((total, goal) => total + Math.max(0, goal.target - goal.saved - goal.planned), 0);
   const free = firstSalary + secondSalary - expenseSum5 - expenseSum20 - tithe5 - tithe20;
+  const food5 = foodCalculation(5, expenses5, year, monthNumber);
+  const food20 = foodCalculation(20, expenses20, year, monthNumber);
   return {
     workdays,
     salary: firstSalary + secondSalary,
@@ -205,7 +222,8 @@ function calculate() {
       free: secondSalary - expenseSum5 - tithe5,
       date: pay5,
       nominalDate: date5,
-      period: `16–${workdays.days} ${MONTHS_GENITIVE[monthNumber - 1]}`
+      period: `16–${workdays.days} ${MONTHS_GENITIVE[monthNumber - 1]}`,
+      ...food5
     },
     p20: {
       payday: 20,
@@ -216,7 +234,8 @@ function calculate() {
       free: firstSalary - expenseSum20 - tithe20,
       date: pay20,
       nominalDate: date20,
-      period: `1–15 ${MONTHS_GENITIVE[monthNumber - 1]}`
+      period: `1–15 ${MONTHS_GENITIVE[monthNumber - 1]}`,
+      ...food20
     }
   };
 }
@@ -277,6 +296,7 @@ function renderPaydayCard(payment, totalWorkdays) {
     <div class="card-subtitle">Формула: ${money(state.settings.salary)} ÷ ${totalWorkdays} × ${payment.days}${moved ? `<br>Оплата перенесена на пятницу перед ${payment.payday}-м числом.` : ""}</div>
     <div class="meter ${spent > payment.salary ? "over" : ""}"><span style="width:${percent}%"></span></div>
     <div class="meter-note">Распределено ${money(spent)} из ${money(payment.salary)}</div>
+    <div class="daily-food"><span>Продукты на ${escapeHtml(payment.foodPeriod)}</span><strong>${money(payment.foodDaily)} / день</strong><small>${money(payment.foodBudget)} ÷ ${payment.foodDays} дней, включительно</small></div>
     <div class="breakdown" style="margin-top:18px">
       <div class="breakdown-row"><span>Расходы</span><strong>− ${money(payment.expenses)}</strong></div>
       <div class="breakdown-row"><span>Десятина (${state.settings.titheRate}%)</span><strong>− ${money(payment.tithe)}</strong></div>
@@ -388,13 +408,14 @@ function renderGoals(calc) {
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
     return `<tr>
       <td><input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></td>
+      <td><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Выделяем из свободных"></td>
       <td class="goal-remaining"><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></td>
       <td><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="6"><div class="empty">Добавьте первую цель.</div></td></tr>`;
+  }).join("") : `<tr><td colspan="7"><div class="empty">Добавьте первую цель.</div></td></tr>`;
   return `<section>
     <div class="stats">
       ${renderStat("На все цели", calc.goalTarget, `${state.goals.length} целей`, "accent")}
@@ -405,7 +426,7 @@ function renderGoals(calc) {
     <div class="notice ${calc.unassigned < 0 ? "negative" : ""}"><span class="notice-dot"></span><div><strong>Свободно после расходов и десятины: ${money(calc.free)}.</strong> ${calc.unassigned >= 0 ? `После выделения на цели останется нераспределёнными ${money(calc.unassigned)}.` : `Распределено на ${money(Math.abs(calc.unassigned))} больше, чем есть свободных денег.`}</div></div>
     <div class="card">
       <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Все суммы можно редактировать. «Выделяем сейчас» уменьшает нераспределённый свободный остаток.</p></div><span class="pill">${state.goals.length} целей</span></div>
-      <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Выделяем сейчас, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Дата</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Выделяем сейчас, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Общая сумма целей<strong>${money(calc.goalTarget)}</strong></div></div>
     </div>
   </section>`;
@@ -500,6 +521,7 @@ function updateItem(target) {
   if (!item) return;
   const field = target.dataset.field;
   if (["amount", "target", "saved", "planned"].includes(field)) item[field] = Math.max(0, Number(target.value) || 0);
+  else if (field === "dueDate") item.dueDate = target.value;
   else if (field === "category" && CATEGORIES[target.value]) item.category = target.value;
   else if (field === "name") item.name = target.value.trim() || "Без названия";
   saveState();
@@ -676,7 +698,7 @@ document.addEventListener("click", event => {
   } else if (action === "add") {
     const kind = button.dataset.kind;
     const item = kind === "goals"
-      ? { id: `g${Date.now()}`, name: "Новая цель", target: 0, saved: 0, planned: 0 }
+      ? { id: `g${Date.now()}`, name: "Новая цель", target: 0, saved: 0, planned: 0, dueDate: "" }
       : { id: `${kind === "expenses" ? "e" : "b"}${Date.now()}`, name: "Новая позиция", amount: 0, category: "other" };
     if (kind === "expenses") item.payday = Number(button.dataset.payday) === 20 ? 20 : 5;
     state[kind].push(item);

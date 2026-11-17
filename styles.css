@@ -157,10 +157,15 @@ tr:hover .delete-button { opacity: 1; }
 .notice.negative { color: var(--red); background: var(--red-soft); border-color: #e8c8c2; }
 .notice.negative strong { color: var(--red); }
 .notice.negative .notice-dot { background: var(--red); }
-.goals-table { min-width: 850px; }
-.goals-table th:nth-child(2), .goals-table th:nth-child(3), .goals-table th:nth-child(4) { text-align: right; }
-.goals-table td:nth-child(2), .goals-table td:nth-child(3), .goals-table td:nth-child(4) { width: 155px; }
-.goals-table td:nth-child(5) { width: 160px; }
+.daily-food { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 14px; margin-top: 16px; padding: 13px 14px; border-radius: 12px; background: var(--gold-soft); }
+.daily-food span { color: #6f5936; font-size: 12px; }
+.daily-food strong { color: #614820; font-size: 18px; white-space: nowrap; }
+.daily-food small { grid-column: 1 / -1; color: #806e50; font-size: 11px; }
+.goals-table { min-width: 1050px; }
+.goals-table th:nth-child(3), .goals-table th:nth-child(4), .goals-table th:nth-child(5) { text-align: right; }
+.goals-table td:nth-child(2) { width: 150px; }
+.goals-table td:nth-child(3), .goals-table td:nth-child(4), .goals-table td:nth-child(5) { width: 155px; }
+.goals-table td:nth-child(6) { width: 160px; }
 .goal-remaining strong { font-size: 13px; white-space: nowrap; }
 .goal-remaining .meter { margin: 8px 0 0; }
 .credit-note-card { border-color: #d6c6a8; background: #fffcf5; }
