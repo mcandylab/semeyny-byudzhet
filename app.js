@@ -308,7 +308,6 @@ function renderPaydayCard(payment, totalWorkdays) {
     <div class="card-subtitle">Формула: ${money(state.settings.salary)} ÷ ${totalWorkdays} × ${payment.days}${moved ? `<br>Оплата перенесена на пятницу перед ${payment.payday}-м числом.` : ""}</div>
     <div class="meter ${spent > payment.salary ? "over" : ""}"><span style="width:${percent}%"></span></div>
     <div class="meter-note">Распределено ${money(spent)} из ${money(payment.salary)}</div>
-    <div class="daily-food"><span>План: продукты на ${escapeHtml(payment.foodPeriod)}</span><strong>${money(payment.foodDaily)} / день</strong><small>${money(payment.foodBudget)} ÷ ${payment.foodDays} дней, включительно</small></div>
     <div class="breakdown" style="margin-top:18px">
       <div class="breakdown-row"><span>Расходы</span><strong>− ${money(payment.expenses)}</strong></div>
       <div class="breakdown-row"><span>Десятина (${state.settings.titheRate}%)</span><strong>− ${money(payment.tithe)}</strong></div>
@@ -470,6 +469,22 @@ function renderGoals(calc) {
       <td><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></td>
     </tr>`;
   }).join("") : `<tr><td colspan="8"><div class="empty">Добавьте первую цель.</div></td></tr>`;
+  const cards = state.goals.length ? state.goals.map(goal => {
+    const covered = goal.saved + goal.planned;
+    const remaining = goal.target - covered;
+    const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
+    return `<article class="goal-mobile-card">
+      <label class="field"><span class="field-label">Цель</span><input class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></label>
+      <div class="goal-mobile-grid">
+        <label class="field"><span class="field-label">Дата</span><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></label>
+        <label class="field"><span class="field-label">С какой ЗП</span><select class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="payday" aria-label="С какой зарплаты отложить"><option value="0" ${goal.payday === 0 ? "selected" : ""}>Не выбрано</option><option value="5" ${goal.payday === 5 ? "selected" : ""}>ЗП 5-го</option><option value="20" ${goal.payday === 20 ? "selected" : ""}>ЗП 20-го</option></select></label>
+        <label class="field"><span class="field-label">Нужно, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></label>
+        <label class="field"><span class="field-label">Уже отложено, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></label>
+        <label class="field"><span class="field-label">Отложить, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить"></label>
+      </div>
+      <div class="goal-mobile-footer"><div class="goal-remaining"><span class="field-label">Остаётся собрать</span><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></div><button class="button danger small" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}">Удалить</button></div>
+    </article>`;
+  }).join("") : `<div class="empty">Добавьте первую цель.</div>`;
   return `<section>
     <div class="stats">
       ${renderStat("На все цели", calc.goalTarget, `${state.goals.length} целей`, "accent")}
@@ -481,6 +496,7 @@ function renderGoals(calc) {
     <div class="card">
       <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Укажите дату, с какой зарплаты и сколько отложить. Это уменьшит остаток выбранной выплаты.</p></div><span class="pill">${state.goals.length} целей</span></div>
       <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Дата</th><th>С какой ЗП</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Отложить, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="goal-cards">${cards}</div>
       <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Общая сумма целей<strong>${money(calc.goalTarget)}</strong></div></div>
     </div>
   </section>`;

@@ -157,16 +157,17 @@ tr:hover .delete-button { opacity: 1; }
 .notice.negative { color: var(--red); background: var(--red-soft); border-color: #e8c8c2; }
 .notice.negative strong { color: var(--red); }
 .notice.negative .notice-dot { background: var(--red); }
-.daily-food { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 14px; margin-top: 16px; padding: 13px 14px; border-radius: 12px; background: var(--gold-soft); }
-.daily-food span { color: #6f5936; font-size: 12px; }
-.daily-food strong { color: #614820; font-size: 18px; white-space: nowrap; }
-.daily-food small { grid-column: 1 / -1; color: #806e50; font-size: 11px; }
 .goals-table { min-width: 1200px; }
 .goals-table th:nth-child(4), .goals-table th:nth-child(5), .goals-table th:nth-child(6) { text-align: right; }
 .goals-table td:nth-child(2) { width: 150px; }
 .goals-table td:nth-child(3) { width: 125px; }
 .goals-table td:nth-child(4), .goals-table td:nth-child(5), .goals-table td:nth-child(6) { width: 150px; }
 .goals-table td:nth-child(7) { width: 160px; }
+.goal-cards { display: none; }
+.goal-mobile-card { display: grid; gap: 14px; padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.goal-mobile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.goal-mobile-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.goal-mobile-footer .goal-remaining { flex: 1; display: grid; gap: 4px; }
 .balance-daily { display: grid; gap: 3px; text-align: right; white-space: nowrap; }
 .balance-daily strong { color: var(--green); font-size: 13px; }
 .balance-daily span { color: var(--muted); font-size: 11px; }
@@ -252,6 +253,10 @@ tr:hover .delete-button { opacity: 1; }
   .purchase-form-grid { grid-template-columns: 1fr; }
   .purchase-row { grid-template-columns: minmax(0, 1fr) auto; }
   .purchase-row .button { grid-column: 1 / -1; justify-self: start; }
+  .goals-table { display: none; }
+  .goal-cards { display: grid; gap: 14px; }
+  .goal-mobile-grid .settings-input { min-width: 0; width: 100%; padding: 9px; font-size: 13px; }
+  .goal-mobile-footer { align-items: center; }
 }
 
 @media print {
