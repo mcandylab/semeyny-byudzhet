@@ -71,6 +71,7 @@ function blankState() {
     expenses: [],
     balances: [],
     goals: [],
+    purchases: [],
     creditNote: "",
     updatedAt: new Date().toISOString()
   };
@@ -105,6 +106,14 @@ function normalizeState(value) {
       target: Math.max(0, Number(item.target) || 0),
       saved: Math.max(0, Number(item.saved) || 0),
       planned: Math.max(0, Number(item.planned) || 0)
+    })) : [],
+    purchases: Array.isArray(value.purchases) ? value.purchases.map((item, index) => ({
+      id: String(item.id || `p${Date.now()}-${index}`),
+      name: String(item.name || "Покупка"),
+      amount: Math.max(0, Number(item.amount) || 0),
+      balanceId: String(item.balanceId || ""),
+      balanceName: String(item.balanceName || "Конверт"),
+      date: /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : dateKey(new Date())
     })) : [],
     creditNote: String(value.creditNote || ""),
     updatedAt: value.updatedAt || new Date().toISOString()
@@ -342,6 +351,36 @@ function renderItemsCard(items, kind, calc, payday = null) {
   </section>`;
 }
 
+function renderBalancesSection(calc) {
+  const food = state.balances.find(item => item.name.trim().toLowerCase() === "еда") || state.balances[0];
+  const options = state.balances.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === food?.id ? "selected" : ""}>${escapeHtml(item.name)} — ${money(item.amount)}</option>`).join("");
+  const purchases = [...state.purchases].reverse();
+  const history = purchases.length ? purchases.map(purchase => `<div class="purchase-row">
+    <div><div class="purchase-name">${escapeHtml(purchase.name)}</div><div class="purchase-meta">${new Date(`${purchase.date}T12:00:00`).toLocaleDateString("ru-RU")} · из «${escapeHtml(purchase.balanceName)}»</div></div>
+    <strong class="purchase-amount">− ${money(purchase.amount)}</strong>
+    <button class="button ghost small" data-action="undo-purchase" data-id="${escapeHtml(purchase.id)}">Отменить</button>
+  </div>`).join("") : `<div class="empty">Записанных покупок пока нет.</div>`;
+  return `${renderItemsCard(state.balances, "balances", calc)}
+    <div class="grid-two purchase-section">
+      <section class="card">
+        <div class="card-head"><div><p class="eyebrow">Списать трату</p><h2>Записать покупку</h2><p class="card-subtitle">Сумма автоматически вычитается из выбранного конверта</p></div></div>
+        <div class="purchase-form">
+          <label class="field"><span class="field-label">Что купили</span><input id="purchase-name" class="settings-input" value="Продукты" autocomplete="off"></label>
+          <div class="purchase-form-grid">
+            <label class="field"><span class="field-label">Сумма</span><span class="input-with-suffix"><input id="purchase-amount" class="settings-input" type="number" min="0.01" step="0.01" placeholder="500"><span class="input-suffix">₽</span></span></label>
+            <label class="field"><span class="field-label">Дата</span><input id="purchase-date" class="settings-input" type="date" value="${dateKey(new Date())}"></label>
+          </div>
+          <label class="field"><span class="field-label">Откуда списать</span><select id="purchase-balance" class="settings-input">${options}</select></label>
+          <button class="button primary" data-action="record-purchase" ${state.balances.length ? "" : "disabled"}>Записать покупку</button>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head"><div><p class="eyebrow">Последние траты</p><h2>История покупок</h2><p class="card-subtitle">Отмена вернёт деньги в тот же конверт</p></div><span class="pill">${purchases.length}</span></div>
+        <div class="purchase-list">${history}</div>
+      </section>
+    </div>`;
+}
+
 function renderGoals(calc) {
   const rows = state.goals.length ? state.goals.map(goal => {
     const covered = goal.saved + goal.planned;
@@ -431,7 +470,7 @@ function render() {
   let content;
   if (activeTab === "pay5") content = renderItemsCard(state.expenses.filter(item => item.payday === 5), "expenses", calc, 5);
   else if (activeTab === "pay20") content = renderItemsCard(state.expenses.filter(item => item.payday === 20), "expenses", calc, 20);
-  else if (activeTab === "balances") content = renderItemsCard(state.balances, "balances", calc);
+  else if (activeTab === "balances") content = renderBalancesSection(calc);
   else if (activeTab === "goals") content = renderGoals(calc);
   else if (activeTab === "settings") content = renderSettings(calc);
   else content = renderOverview(calc);
@@ -465,6 +504,52 @@ function updateItem(target) {
   else if (field === "name") item.name = target.value.trim() || "Без названия";
   saveState();
   render();
+}
+
+function recordPurchase() {
+  const name = document.querySelector("#purchase-name").value.trim() || "Покупка";
+  const amount = Math.round((Number(document.querySelector("#purchase-amount").value) || 0) * 100) / 100;
+  const balanceId = document.querySelector("#purchase-balance").value;
+  const balance = state.balances.find(item => item.id === balanceId);
+  if (amount <= 0) {
+    showToast("Укажите сумму покупки больше нуля");
+    return;
+  }
+  if (!balance) {
+    showToast("Выберите конверт, из которого списать покупку");
+    return;
+  }
+  if (amount > balance.amount) {
+    showToast(`В конверте «${balance.name}» недостаточно: есть ${money(balance.amount)}`);
+    return;
+  }
+  balance.amount = Math.round((balance.amount - amount) * 100) / 100;
+  state.purchases.push({
+    id: `p${Date.now()}`,
+    name,
+    amount,
+    balanceId,
+    balanceName: balance.name,
+    date: document.querySelector("#purchase-date").value || dateKey(new Date())
+  });
+  saveState();
+  render();
+  showToast(`${name}: − ${money(amount)} из «${balance.name}»`);
+}
+
+function undoPurchase(id) {
+  const purchase = state.purchases.find(item => item.id === id);
+  if (!purchase) return;
+  const balance = state.balances.find(item => item.id === purchase.balanceId);
+  if (!balance) {
+    showToast("Конверт удалён. Сначала восстановите его, затем измените остаток вручную.");
+    return;
+  }
+  balance.amount = Math.round((balance.amount + purchase.amount) * 100) / 100;
+  state.purchases = state.purchases.filter(item => item.id !== id);
+  saveState();
+  render();
+  showToast(`Покупка отменена, ${money(purchase.amount)} возвращены в «${balance.name}»`);
 }
 
 function bytesToBase64Url(bytes) {
@@ -582,6 +667,8 @@ document.addEventListener("click", event => {
   else if (action === "export") exportBudget();
   else if (action === "print") window.print();
   else if (action === "import") importFile.click();
+  else if (action === "record-purchase") recordPurchase();
+  else if (action === "undo-purchase") undoPurchase(button.dataset.id);
   else if (action === "reset-workdays") {
     delete state.workdays[state.month];
     saveState();
