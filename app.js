@@ -157,7 +157,7 @@ function adjustedPayday(date) {
   if (weekday >= 1 && weekday <= 5 && !HOLIDAYS.has(dateKey(result))) return result;
   do {
     result.setDate(result.getDate() - 1);
-  } while (result.getDay() !== 5 || HOLIDAYS.has(dateKey(result)));
+  } while (!isWorkingDay(result));
   return result;
 }
 
@@ -305,7 +305,7 @@ function renderPaydayCard(payment, totalWorkdays) {
       <span class="pill">${payment.days} раб. дн.</span>
     </div>
     <div class="big-money">${money(payment.salary)}</div>
-    <div class="card-subtitle">Формула: ${money(state.settings.salary)} ÷ ${totalWorkdays} × ${payment.days}${moved ? `<br>Оплата перенесена на пятницу перед ${payment.payday}-м числом.` : ""}</div>
+    <div class="card-subtitle">Формула: ${money(state.settings.salary)} ÷ ${totalWorkdays} × ${payment.days}${moved ? `<br>Оплата перенесена на последний рабочий день перед ${payment.payday}-м числом.` : ""}</div>
     <div class="meter ${spent > payment.salary ? "over" : ""}"><span style="width:${percent}%"></span></div>
     <div class="meter-note">Распределено ${money(spent)} из ${money(payment.salary)}</div>
     <div class="breakdown" style="margin-top:18px">
