@@ -173,6 +173,11 @@ tr:hover .delete-button { opacity: 1; }
 .balance-daily span { color: var(--muted); font-size: 11px; }
 .goal-remaining strong { font-size: 13px; white-space: nowrap; }
 .goal-remaining .meter { margin: 8px 0 0; }
+.planned-saving-row td { background: var(--green-soft); }
+.planned-saving-row td:first-child { border-radius: 10px 0 0 10px; }
+.planned-saving-row td:last-child { border-radius: 0 10px 10px 0; }
+.planned-saving-row strong, .planned-saving-row small { display: block; }
+.planned-saving-row small { margin-top: 4px; color: var(--muted); font-size: 11px; }
 .credit-note-card { border-color: #d6c6a8; background: #fffcf5; }
 .comment-input {
   display: block; width: 100%; min-height: 340px; padding: 16px; resize: vertical;

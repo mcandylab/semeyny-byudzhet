@@ -409,15 +409,22 @@ function renderItemsCard(items, kind, calc, payday = null) {
   const payment = payday === 5 ? calc.p5 : payday === 20 ? calc.p20 : null;
   const title = payment ? `Расходы с выплаты ${payment.payday}-го` : "Сейчас есть и на что";
   const subtitle = payment ? `${escapeHtml(payment.period)} · выплата ${dateFormatter.format(payment.date)}` : "Текущие остатки по конвертам и целям";
+  const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday && goal.planned > 0) : [];
+  const savingsRows = savingsGoals.map(goal => `<tr class="planned-saving-row">
+    <td><strong>Накопление: ${escapeHtml(goal.name)}</strong>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
+    <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)}"></td>
+    <td><span class="pill">Из целей</span></td><td></td>
+  </tr>`).join("");
+  const total = sumItems(items) + (payment?.goalAllocated || 0);
   return `<section class="card">
-    <div class="card-head"><div><p class="eyebrow">Можно редактировать</p><h2>${title}</h2><p class="card-subtitle">${subtitle}</p></div><span class="pill">${items.length} поз.</span></div>
+    <div class="card-head"><div><p class="eyebrow">Можно редактировать</p><h2>${title}</h2><p class="card-subtitle">${subtitle}</p></div><span class="pill">${items.length + savingsGoals.length} поз.</span></div>
     ${payment ? `<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px">
       ${renderStat("Выплата", payment.salary, `${payment.days} рабочих дней`)}
       ${renderStat("Десятина", payment.tithe, `${state.settings.titheRate}% от выплаты`)}
-      ${renderStat("После всех вычетов", payment.free, "Свободный остаток", payment.free < 0 ? "negative" : "")}
+      ${renderStat("После всех вычетов", payment.afterGoals, "Включая накопления на цели", payment.afterGoals < 0 ? "negative" : "")}
     </div>` : ""}
-    <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th>${kind === "balances" ? "<th>На каждый день</th>" : ""}<th></th></tr></thead><tbody>${renderRows(items, kind)}</tbody></table></div>
-    <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="${kind}" ${payday ? `data-payday="${payday}"` : ""}>+ Добавить позицию</button><div class="table-total">Итого<strong>${money(sumItems(items))}</strong></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th>${kind === "balances" ? "<th>На каждый день</th>" : ""}<th></th></tr></thead><tbody>${renderRows(items, kind)}${savingsRows}</tbody></table></div>
+    <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="${kind}" ${payday ? `data-payday="${payday}"` : ""}>+ Добавить позицию</button><div class="table-total">Итого<strong>${money(total)}</strong></div></div>
   </section>`;
 }
 
