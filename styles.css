@@ -161,11 +161,15 @@ tr:hover .delete-button { opacity: 1; }
 .daily-food span { color: #6f5936; font-size: 12px; }
 .daily-food strong { color: #614820; font-size: 18px; white-space: nowrap; }
 .daily-food small { grid-column: 1 / -1; color: #806e50; font-size: 11px; }
-.goals-table { min-width: 1050px; }
-.goals-table th:nth-child(3), .goals-table th:nth-child(4), .goals-table th:nth-child(5) { text-align: right; }
+.goals-table { min-width: 1200px; }
+.goals-table th:nth-child(4), .goals-table th:nth-child(5), .goals-table th:nth-child(6) { text-align: right; }
 .goals-table td:nth-child(2) { width: 150px; }
-.goals-table td:nth-child(3), .goals-table td:nth-child(4), .goals-table td:nth-child(5) { width: 155px; }
-.goals-table td:nth-child(6) { width: 160px; }
+.goals-table td:nth-child(3) { width: 125px; }
+.goals-table td:nth-child(4), .goals-table td:nth-child(5), .goals-table td:nth-child(6) { width: 150px; }
+.goals-table td:nth-child(7) { width: 160px; }
+.balance-daily { display: grid; gap: 3px; text-align: right; white-space: nowrap; }
+.balance-daily strong { color: var(--green); font-size: 13px; }
+.balance-daily span { color: var(--muted); font-size: 11px; }
 .goal-remaining strong { font-size: 13px; white-space: nowrap; }
 .goal-remaining .meter { margin: 8px 0 0; }
 .credit-note-card { border-color: #d6c6a8; background: #fffcf5; }
