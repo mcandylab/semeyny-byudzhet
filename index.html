@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Семейный бюджет</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="sync.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -22,7 +23,7 @@
       </div>
       <button class="icon-button" value="cancel" aria-label="Закрыть">×</button>
     </form>
-    <p>В ссылке уже содержатся все текущие суммы и названия. Отправьте её мужу или жене. После новых изменений создайте и отправьте новую ссылку.</p>
+    <p id="share-description">В ссылке уже содержатся все текущие суммы и названия. Отправьте её мужу или жене. После новых изменений создайте и отправьте новую ссылку.</p>
     <label class="field-label" for="share-url">Ссылка</label>
     <textarea id="share-url" rows="5" readonly></textarea>
     <div class="dialog-actions">

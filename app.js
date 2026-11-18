@@ -34,6 +34,7 @@ const importFile = document.querySelector("#import-file");
 let state = null;
 let activeTab = "overview";
 let storageKey = "";
+let budgetSync = null;
 let toastTimer;
 
 function money(value) {
@@ -252,15 +253,30 @@ function calculate() {
   };
 }
 
+function storeLocalState() {
+  if (!storageKey) return;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    showToast("Не удалось сохранить на устройстве. Скачайте резервную копию.");
+  }
+}
+
 function saveState() {
   state.updatedAt = new Date().toISOString();
-  if (storageKey) {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(state));
-    } catch {
-      showToast("Не удалось сохранить на устройстве. Скачайте резервную копию.");
-    }
-  }
+  storeLocalState();
+  if (budgetSync?.active) budgetSync.save(state);
+}
+
+function applySyncedState(incoming) {
+  state = normalizeState(incoming);
+  storeLocalState();
+  render();
+}
+
+function updateSyncStatus(message) {
+  const status = document.querySelector("#sync-status");
+  if (status) status.textContent = message;
 }
 
 function showToast(message) {
@@ -337,7 +353,7 @@ function renderOverview(calc) {
       ${renderStat("Свободный остаток", calc.free, "Можно распределить на цели", calc.free < 0 ? "negative" : "")}
     </div>
     <div class="notice"><span class="notice-dot"></span><div><strong>Сейчас в конвертах и на целях: ${money(calc.balances)}.</strong> Это уже имеющиеся деньги, они не прибавляются к свободному остатку от будущей зарплаты.</div></div>
-    ${state.creditNote ? `<div class="section-heading"><div><h2>Мужу: порядок действий с кредитками</h2><p>Долги, лимиты и схема беспроцентного погашения</p></div><span class="pill gold">Важно</span></div><div class="card credit-note-card"><textarea class="comment-input" data-credit-note aria-label="Комментарий для мужа о кредитках">${escapeHtml(state.creditNote)}</textarea><p class="comment-hint">Текст можно редактировать. Чтобы передать изменение, создайте новую ссылку.</p></div>` : ""}
+    ${state.creditNote ? `<div class="section-heading"><div><h2>Мужу: порядок действий с кредитками</h2><p>Долги, лимиты и схема беспроцентного погашения</p></div><span class="pill gold">Важно</span></div><div class="card credit-note-card"><textarea class="comment-input" data-credit-note aria-label="Комментарий для мужа о кредитках">${escapeHtml(state.creditNote)}</textarea><p class="comment-hint">${budgetSync?.active ? "Текст можно редактировать. Изменения автоматически появятся на обоих устройствах." : "Текст можно редактировать. Чтобы передать изменение, создайте новую ссылку."}</p></div>` : ""}
     <div class="grid-two">${renderPaydayCard(calc.p20, calc.workdays.total)}${renderPaydayCard(calc.p5, calc.workdays.total)}</div>
     <div class="section-heading"><div><h2>На что нужны деньги</h2><p>Цели, накопления и распределение свободного остатка</p></div><button class="button ghost small" data-tab="goals">Открыть цели</button></div>
     <div class="card goal-summary">
@@ -543,8 +559,8 @@ function renderSettings(calc) {
     </div>
     <div class="card">
       <div class="card-head"><div><p class="eyebrow">Как работает ссылка</p><h2>Передача изменений</h2></div></div>
-      <p class="card-subtitle">Изменения автоматически сохраняются на текущем устройстве. Чтобы второй человек увидел именно новую версию, нажмите «Поделиться версией» и отправьте новую ссылку. Автоматической синхронизации между устройствами нет.</p>
-      <p class="privacy-note">Финансовые данные находятся в части ссылки после # и не отправляются на сервер страницы. Храните ссылку как личный документ.</p>
+      <p class="card-subtitle">${budgetSync?.active ? "Одна и та же ссылка работает на обоих устройствах. Изменения автоматически сохраняются в общем зашифрованном хранилище и подтягиваются при открытии страницы." : "Изменения автоматически сохраняются на текущем устройстве. Чтобы второй человек увидел именно новую версию, нажмите «Поделиться версией» и отправьте новую ссылку. Автоматической синхронизации между устройствами нет."}</p>
+      <p class="privacy-note">${budgetSync?.active ? "Данные хранятся в зашифрованном виде в общем онлайн-хранилище. Ключ расшифровки находится только в семейной ссылке. Храните её как личный документ." : "Финансовые данные находятся в части ссылки после # и не отправляются на сервер страницы. Храните ссылку как личный документ."}</p>
     </div>
   </section>`;
 }
@@ -574,9 +590,9 @@ function render() {
   else content = renderOverview(calc);
 
   app.innerHTML = `<main class="shell">
-    <header class="topbar">${brand()}<div class="top-actions"><button class="button secondary" data-action="export">Скачать копию</button><button class="button primary" data-action="share">Поделиться версией</button></div></header>
+    <header class="topbar">${brand()}<div class="top-actions"><button class="button secondary" data-action="export">Скачать копию</button><button class="button primary" data-action="share">${budgetSync?.active ? "Поделиться ссылкой" : "Поделиться версией"}</button></div></header>
     <section class="monthbar"><div><h2>${monthFormatter.format(monthDate)}</h2><p>Зарплата, обязательные расходы и свободный остаток</p></div><div class="month-controls"><button class="icon-button" data-action="previous-month" aria-label="Предыдущий месяц">‹</button><input type="month" data-month value="${state.month}" aria-label="Месяц бюджета"><button class="icon-button" data-action="next-month" aria-label="Следующий месяц">›</button></div></section>
-    <div class="notice"><span class="notice-dot"></span><div>Изменения сохраняются на этом устройстве. <strong>Чтобы передать их другому человеку, создайте новую ссылку</strong> кнопкой «Поделиться версией».</div></div>
+    <div class="notice"><span class="notice-dot"></span><div>${budgetSync?.active ? `<strong id="sync-status">Общая синхронизация включена</strong> Изменения автоматически сохраняются в общем зашифрованном хранилище и на этом устройстве.` : `Изменения сохраняются на этом устройстве. <strong>Чтобы передать их другому человеку, создайте новую ссылку</strong> кнопкой «Поделиться версией».`}</div></div>
     <nav class="tabs" aria-label="Разделы бюджета">${tabs.map(([key, label]) => `<button class="tab ${activeTab === key ? "active" : ""}" data-tab="${key}">${label}</button>`).join("")}</nav>
     ${content}
     <p class="updated">Последнее изменение на этом устройстве: ${new Date(state.updatedAt).toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
@@ -690,9 +706,12 @@ async function decodeState(hash) {
 
 async function shareBudget() {
   try {
-    const encoded = await encodeState(state);
-    const url = `${location.origin}${location.pathname}#${encoded}`;
+    const encoded = budgetSync?.active ? "" : await encodeState(state);
+    const url = budgetSync?.active ? budgetSync.url : `${location.origin}${location.pathname}#${encoded}`;
     shareUrlInput.value = url;
+    document.querySelector("#share-description").textContent = budgetSync?.active
+      ? "Это постоянная ссылка на общий бюджет. Отправьте её мужу или жене один раз. Новые изменения будут появляться автоматически, новую ссылку создавать не нужно."
+      : "В ссылке уже содержатся все текущие суммы и названия. Отправьте её мужу или жене. После новых изменений создайте и отправьте новую ссылку.";
     document.querySelector("#native-share").hidden = !navigator.share;
     shareDialog.showModal();
   } catch {
@@ -730,6 +749,17 @@ async function initialize() {
     return;
   }
   storageKey = `semeiny-byudzhet:${location.hash}`;
+  if (location.hash.startsWith("#sync.")) {
+    try {
+      budgetSync = new BudgetSync({ onState: applySyncedState, onStatus: updateSyncStatus });
+      state = normalizeState(await budgetSync.open(location.hash));
+      storeLocalState();
+      render();
+    } catch (error) {
+      renderWelcome(error.message || "Не удалось загрузить общий бюджет");
+    }
+    return;
+  }
   try {
     const linkedState = await decodeState(location.hash);
     try {
