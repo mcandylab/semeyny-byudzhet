@@ -21,8 +21,7 @@ class BudgetSync {
   }
 
   get url() {
-    const initialState = location.hash.replace(/^#/, "").split(".")[3];
-    return `${location.origin}${location.pathname}#sync.${this.manifestId}.${this.key}.${initialState}`;
+    return `${location.origin}${location.pathname}#sync.${this.manifestId}.${this.key}`;
   }
 
   getDeviceId() {
@@ -82,7 +81,12 @@ class BudgetSync {
 
   async decodeInitialState(hash) {
     const encoded = hash.replace(/^#/, "").split(".")[3];
-    if (!encoded) throw new Error("В ссылке нет начальных данных");
+    if (!encoded) {
+      const rows = await this.fetchJson(`${SUPABASE_URL}/rest/v1/budget_snapshots?id=eq.initial-${this.manifestId}`);
+      const data = rows[0]?.payload;
+      if (!data?.iv) throw new Error("Не удалось загрузить начальные данные общего бюджета");
+      return JSON.parse(await this.decryptText(data.iv, data.payload));
+    }
     const compressed = this.base64UrlToBytes(encoded);
     const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
     const text = await new Response(stream).text();

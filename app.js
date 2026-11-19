@@ -35,6 +35,7 @@ let state = null;
 let activeTab = "overview";
 let storageKey = "";
 let budgetSync = null;
+let recoveryCandidate = null;
 let toastTimer;
 
 function money(value) {
@@ -272,6 +273,31 @@ function applySyncedState(incoming) {
   state = normalizeState(incoming);
   storeLocalState();
   render();
+}
+
+function findRecoveryCandidate() {
+  const candidates = [];
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith("semeiny-byudzhet:") || key === storageKey) continue;
+      try {
+        const saved = normalizeState(JSON.parse(localStorage.getItem(key)));
+        const hasNewPurchases = saved.purchases.some(purchase => !state.purchases.some(item => item.id === purchase.id));
+        if (hasNewPurchases) candidates.push({ state: saved, key });
+      } catch {}
+    }
+  } catch {}
+  candidates.sort((a, b) => String(b.state.updatedAt).localeCompare(String(a.state.updatedAt)));
+  return candidates[0] || null;
+}
+
+function renderRecoveryNotice() {
+  if (!recoveryCandidate) return "";
+  const saved = recoveryCandidate.state;
+  const total = saved.balances.reduce((sum, item) => sum + item.amount, 0);
+  const changed = new Date(saved.updatedAt).toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return `<div class="notice"><span class="notice-dot"></span><div><strong>На этом устройстве найдена прежняя версия с записями о тратах.</strong><br>Покупок: ${saved.purchases.length}; остаток: ${money(total)}; изменена: ${changed}.<div class="actions-list" style="margin-top:12px"><button class="button primary small" data-action="restore-local">Восстановить эту версию</button><button class="button ghost small" data-action="dismiss-recovery">Не восстанавливать</button></div></div></div>`;
 }
 
 function updateSyncStatus(message) {
@@ -593,6 +619,7 @@ function render() {
     <header class="topbar">${brand()}<div class="top-actions"><button class="button secondary" data-action="export">Скачать копию</button><button class="button primary" data-action="share">${budgetSync?.active ? "Поделиться ссылкой" : "Поделиться версией"}</button></div></header>
     <section class="monthbar"><div><h2>${monthFormatter.format(monthDate)}</h2><p>Зарплата, обязательные расходы и свободный остаток</p></div><div class="month-controls"><button class="icon-button" data-action="previous-month" aria-label="Предыдущий месяц">‹</button><input type="month" data-month value="${state.month}" aria-label="Месяц бюджета"><button class="icon-button" data-action="next-month" aria-label="Следующий месяц">›</button></div></section>
     <div class="notice"><span class="notice-dot"></span><div>${budgetSync?.active ? `<strong id="sync-status">Общая синхронизация включена</strong> Изменения автоматически сохраняются в общем зашифрованном хранилище и на этом устройстве.` : `Изменения сохраняются на этом устройстве. <strong>Чтобы передать их другому человеку, создайте новую ссылку</strong> кнопкой «Поделиться версией».`}</div></div>
+    ${renderRecoveryNotice()}
     <nav class="tabs" aria-label="Разделы бюджета">${tabs.map(([key, label]) => `<button class="tab ${activeTab === key ? "active" : ""}" data-tab="${key}">${label}</button>`).join("")}</nav>
     ${content}
     <p class="updated">Последнее изменение на этом устройстве: ${new Date(state.updatedAt).toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
@@ -754,6 +781,7 @@ async function initialize() {
       budgetSync = new BudgetSync({ onState: applySyncedState, onStatus: updateSyncStatus });
       state = normalizeState(await budgetSync.open(location.hash));
       storeLocalState();
+      recoveryCandidate = findRecoveryCandidate();
       render();
     } catch (error) {
       renderWelcome(error.message || "Не удалось загрузить общий бюджет");
@@ -801,6 +829,16 @@ document.addEventListener("click", event => {
   else if (action === "import") importFile.click();
   else if (action === "record-purchase") recordPurchase();
   else if (action === "undo-purchase") undoPurchase(button.dataset.id);
+  else if (action === "restore-local" && recoveryCandidate) {
+    state = normalizeState(recoveryCandidate.state);
+    recoveryCandidate = null;
+    saveState();
+    render();
+    showToast("Прежние записи восстановлены и отправляются в общий бюджет");
+  } else if (action === "dismiss-recovery") {
+    recoveryCandidate = null;
+    render();
+  }
   else if (action === "reset-workdays") {
     delete state.workdays[state.month];
     saveState();
