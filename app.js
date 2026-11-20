@@ -94,13 +94,15 @@ function normalizeState(value) {
       name: String(item.name || "Без названия"),
       amount: Math.max(0, Number(item.amount) || 0),
       payday: Number(item.payday) === 20 ? 20 : 5,
-      category: CATEGORIES[item.category] ? item.category : "other"
+      category: CATEGORIES[item.category] ? item.category : "other",
+      paidMonths: Array.isArray(item.paidMonths) ? item.paidMonths.filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) : []
     })) : [],
     balances: Array.isArray(value.balances) ? value.balances.map((item, index) => ({
       id: String(item.id || `b${Date.now()}-${index}`),
       name: String(item.name || "Без названия"),
       amount: Math.max(0, Number(item.amount) || 0),
-      category: CATEGORIES[item.category] ? item.category : "other"
+      category: CATEGORIES[item.category] ? item.category : "other",
+      paidMonths: Array.isArray(item.paidMonths) ? item.paidMonths.filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) : []
     })) : [],
     goals: Array.isArray(value.goals) ? value.goals.map((item, index) => ({
       id: String(item.id || `g${Date.now()}-${index}`),
@@ -109,10 +111,12 @@ function normalizeState(value) {
       saved: Math.max(0, Number(item.saved) || 0),
       planned: Math.max(0, Number(item.planned) || 0),
       dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : "",
-      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0
+      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0,
+      paidMonths: Array.isArray(item.paidMonths) ? item.paidMonths.filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) : []
     })) : [],
     purchases: Array.isArray(value.purchases) ? value.purchases.map((item, index) => ({
       id: String(item.id || `p${Date.now()}-${index}`),
+      type: item.type === "deposit" ? "deposit" : "purchase",
       name: String(item.name || "Покупка"),
       amount: Math.max(0, Number(item.amount) || 0),
       balanceId: String(item.balanceId || ""),
@@ -432,13 +436,22 @@ function currentFoodDaily(balance) {
   };
 }
 
+function isPaid(item) {
+  return Array.isArray(item.paidMonths) && item.paidMonths.includes(state.month);
+}
+
+function paidCheckbox(item, kind, label) {
+  return `<input class="paid-checkbox" type="checkbox" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="paid" aria-label="${label}: ${escapeHtml(item.name)}" title="${label}" ${isPaid(item) ? "checked" : ""}>`;
+}
+
 function renderRows(items, kind) {
   const columns = kind === "balances" ? 5 : 4;
   if (!items.length) return `<tr><td colspan="${columns}"><div class="empty">Пока нет ни одной позиции.</div></td></tr>`;
   return items.map(item => {
     const daily = kind === "balances" ? currentFoodDaily(item) : null;
+    const paidLabel = kind === "balances" ? "Переведено" : "Оплачено";
     return `<tr>
-      <td><input class="name-input" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="name" value="${escapeHtml(item.name)}" aria-label="Название"></td>
+      <td><div class="name-with-check">${paidCheckbox(item, kind, paidLabel)}<input class="name-input" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="name" value="${escapeHtml(item.name)}" aria-label="Название"></div></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="amount" value="${Number(item.amount) || 0}" aria-label="Сумма в рублях"></td>
       <td><select class="category-select" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="category" aria-label="Категория">${categoryOptions(item.category)}</select></td>
       ${kind === "balances" ? `<td>${daily ? `<div class="balance-daily"><strong>${daily.remainingDays > 0 ? `${money(daily.daily)} / день` : "Дни закрыты"}</strong><span>${daily.remainingDays > 0 ? `осталось ${daily.remainingDays} дн.` : `покрыто ${daily.coveredDays} дн.`}${daily.coveredDays > 0 && daily.remainingDays > 0 ? ` · закрыто ${daily.coveredDays}` : ""}</span></div>` : "—"}</td>` : ""}
@@ -453,7 +466,7 @@ function renderItemsCard(items, kind, calc, payday = null) {
   const subtitle = payment ? `${escapeHtml(payment.period)} · выплата ${dateFormatter.format(payment.date)}` : "Текущие остатки по конвертам и целям";
   const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday && goal.planned > 0) : [];
   const savingsRows = savingsGoals.map(goal => `<tr class="planned-saving-row">
-    <td><strong>Накопление: ${escapeHtml(goal.name)}</strong>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
+    <td><div class="name-with-check">${paidCheckbox(goal, "goals", "Отложено")}<strong>Накопление: ${escapeHtml(goal.name)}</strong></div>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
     <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)}"></td>
     <td><span class="pill">Из целей</span></td><td></td>
   </tr>`).join("");
@@ -474,29 +487,33 @@ function renderBalancesSection(calc) {
   const food = state.balances.find(item => item.name.trim().toLowerCase() === "еда") || state.balances[0];
   const options = state.balances.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === food?.id ? "selected" : ""}>${escapeHtml(item.name)} — ${money(item.amount)}</option>`).join("");
   const purchases = [...state.purchases].reverse();
-  const history = purchases.length ? purchases.map(purchase => `<div class="purchase-row">
-    <div><div class="purchase-name">${escapeHtml(purchase.name)}</div><div class="purchase-meta">${new Date(`${purchase.date}T12:00:00`).toLocaleDateString("ru-RU")} · из «${escapeHtml(purchase.balanceName)}»${purchase.days > 0 ? ` · на ${purchase.days} дн.` : ""}</div></div>
-    <strong class="purchase-amount">− ${money(purchase.amount)}</strong>
-    <button class="button ghost small" data-action="undo-purchase" data-id="${escapeHtml(purchase.id)}">Отменить</button>
-  </div>`).join("") : `<div class="empty">Записанных покупок пока нет.</div>`;
+  const history = purchases.length ? purchases.map(purchase => {
+    const deposit = purchase.type === "deposit";
+    return `<div class="purchase-row">
+      <div><div class="purchase-name">${escapeHtml(purchase.name)}</div><div class="purchase-meta">${new Date(`${purchase.date}T12:00:00`).toLocaleDateString("ru-RU")} · ${deposit ? "в" : "из"} «${escapeHtml(purchase.balanceName)}»${!deposit && purchase.days > 0 ? ` · на ${purchase.days} дн.` : ""}</div></div>
+      <strong class="purchase-amount">${deposit ? "+" : "−"} ${money(purchase.amount)}</strong>
+      <button class="button ghost small" data-action="undo-purchase" data-id="${escapeHtml(purchase.id)}">Отменить</button>
+    </div>`;
+  }).join("") : `<div class="empty">Записанных операций пока нет.</div>`;
   return `${renderItemsCard(state.balances, "balances", calc)}
     <div class="grid-two purchase-section">
       <section class="card">
-        <div class="card-head"><div><p class="eyebrow">Списать трату</p><h2>Записать покупку</h2><p class="card-subtitle">Сумма автоматически вычитается из выбранного конверта</p></div></div>
+        <div class="card-head"><div><p class="eyebrow">Деньги в конвертах</p><h2>Записать операцию</h2><p class="card-subtitle">Покупка вычитает деньги, пополнение прибавляет</p></div></div>
         <div class="purchase-form">
-          <label class="field"><span class="field-label">Что купили</span><input id="purchase-name" class="settings-input" value="Продукты" autocomplete="off"></label>
+          <label class="field"><span class="field-label">Тип операции</span><select id="transaction-type" class="settings-input"><option value="purchase">Покупка — вычесть</option><option value="deposit">Пополнение — прибавить</option></select></label>
+          <label class="field"><span class="field-label">Название</span><input id="purchase-name" class="settings-input" value="Продукты" autocomplete="off"></label>
           <div class="purchase-form-grid">
             <label class="field"><span class="field-label">Сумма</span><span class="input-with-suffix"><input id="purchase-amount" class="settings-input" type="number" min="0.01" step="0.01" placeholder="500"><span class="input-suffix">₽</span></span></label>
             <label class="field"><span class="field-label">Дата</span><input id="purchase-date" class="settings-input" type="date" value="${dateKey(new Date())}"></label>
           </div>
-          <label class="field"><span class="field-label">На сколько дней покупка</span><input id="purchase-days" class="settings-input" type="number" min="0" step="1" value="1"></label>
-          <p class="field-hint">Для еды: 1 — только сегодня, 2 — продукты на два дня, 0 — не вычитать дни из расчёта.</p>
-          <label class="field"><span class="field-label">Откуда списать</span><select id="purchase-balance" class="settings-input">${options}</select></label>
-          <button class="button primary" data-action="record-purchase" ${state.balances.length ? "" : "disabled"}>Записать покупку</button>
+          <label class="field" id="purchase-days-field"><span class="field-label">На сколько дней покупка</span><input id="purchase-days" class="settings-input" type="number" min="0" step="1" value="1"></label>
+          <p class="field-hint" id="purchase-days-hint">Для еды: 1 — только сегодня, 2 — продукты на два дня, 0 — не вычитать дни из расчёта.</p>
+          <label class="field"><span class="field-label">Конверт</span><select id="purchase-balance" class="settings-input">${options}</select></label>
+          <button class="button primary" id="record-transaction" data-action="record-purchase" ${state.balances.length ? "" : "disabled"}>Записать покупку</button>
         </div>
       </section>
       <section class="card">
-        <div class="card-head"><div><p class="eyebrow">Последние траты</p><h2>История покупок</h2><p class="card-subtitle">Отмена вернёт деньги в тот же конверт</p></div><span class="pill">${purchases.length}</span></div>
+        <div class="card-head"><div><p class="eyebrow">Движение денег</p><h2>История операций</h2><p class="card-subtitle">Отмена изменит остаток в том же конверте</p></div><span class="pill">${purchases.length}</span></div>
         <div class="purchase-list">${history}</div>
       </section>
     </div>`;
@@ -508,7 +525,7 @@ function renderGoals(calc) {
     const remaining = goal.target - covered;
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
     return `<tr>
-      <td><input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></td>
+      <td><div class="name-with-check">${paidCheckbox(goal, "goals", "Отложено")}<input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></div></td>
       <td><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></td>
       <td><select class="category-select" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="payday" aria-label="С какой зарплаты отложить"><option value="0" ${goal.payday === 0 ? "selected" : ""}>Не выбрано</option><option value="5" ${goal.payday === 5 ? "selected" : ""}>ЗП 5-го</option><option value="20" ${goal.payday === 20 ? "selected" : ""}>ЗП 20-го</option></select></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></td>
@@ -523,6 +540,7 @@ function renderGoals(calc) {
     const remaining = goal.target - covered;
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
     return `<article class="goal-mobile-card">
+      <label class="paid-check-mobile">${paidCheckbox(goal, "goals", "Отложено")}<span>Отложено в этом месяце</span></label>
       <label class="field"><span class="field-label">Цель</span><input class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></label>
       <div class="goal-mobile-grid">
         <label class="field"><span class="field-label">Дата</span><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></label>
@@ -640,7 +658,13 @@ function updateItem(target) {
   const item = collection.find(entry => entry.id === target.dataset.id);
   if (!item) return;
   const field = target.dataset.field;
-  if (["amount", "target", "saved", "planned"].includes(field)) item[field] = Math.max(0, Number(target.value) || 0);
+  if (field === "paid") {
+    const months = new Set(Array.isArray(item.paidMonths) ? item.paidMonths : []);
+    if (target.checked) months.add(state.month);
+    else months.delete(state.month);
+    item.paidMonths = [...months];
+  }
+  else if (["amount", "target", "saved", "planned"].includes(field)) item[field] = Math.max(0, Number(target.value) || 0);
   else if (field === "dueDate") item.dueDate = target.value;
   else if (field === "payday") item.payday = [5, 20].includes(Number(target.value)) ? Number(target.value) : 0;
   else if (field === "category" && CATEGORIES[target.value]) item.category = target.value;
@@ -649,27 +673,39 @@ function updateItem(target) {
   render();
 }
 
+function updateTransactionForm() {
+  const deposit = document.querySelector("#transaction-type").value === "deposit";
+  document.querySelector("#purchase-days-field").hidden = deposit;
+  document.querySelector("#purchase-days-hint").hidden = deposit;
+  document.querySelector("#purchase-days").value = deposit ? 0 : 1;
+  document.querySelector("#purchase-name").value = deposit ? "Пополнение" : "Продукты";
+  document.querySelector("#record-transaction").textContent = deposit ? "Пополнить конверт" : "Записать покупку";
+}
+
 function recordPurchase() {
-  const name = document.querySelector("#purchase-name").value.trim() || "Покупка";
+  const type = document.querySelector("#transaction-type").value === "deposit" ? "deposit" : "purchase";
+  const deposit = type === "deposit";
+  const name = document.querySelector("#purchase-name").value.trim() || (deposit ? "Пополнение" : "Покупка");
   const amount = Math.round((Number(document.querySelector("#purchase-amount").value) || 0) * 100) / 100;
-  const days = Math.max(0, Math.round(Number(document.querySelector("#purchase-days").value) || 0));
+  const days = deposit ? 0 : Math.max(0, Math.round(Number(document.querySelector("#purchase-days").value) || 0));
   const balanceId = document.querySelector("#purchase-balance").value;
   const balance = state.balances.find(item => item.id === balanceId);
   if (amount <= 0) {
-    showToast("Укажите сумму покупки больше нуля");
+    showToast("Укажите сумму больше нуля");
     return;
   }
   if (!balance) {
-    showToast("Выберите конверт, из которого списать покупку");
+    showToast("Выберите конверт");
     return;
   }
-  if (amount > balance.amount) {
+  if (!deposit && amount > balance.amount) {
     showToast(`В конверте «${balance.name}» недостаточно: есть ${money(balance.amount)}`);
     return;
   }
-  balance.amount = Math.round((balance.amount - amount) * 100) / 100;
+  balance.amount = Math.round((balance.amount + (deposit ? amount : -amount)) * 100) / 100;
   state.purchases.push({
     id: `p${Date.now()}`,
+    type,
     name,
     amount,
     balanceId,
@@ -679,7 +715,7 @@ function recordPurchase() {
   });
   saveState();
   render();
-  showToast(`${name}: − ${money(amount)} из «${balance.name}»`);
+  showToast(deposit ? `${name}: + ${money(amount)} в «${balance.name}»` : `${name}: − ${money(amount)} из «${balance.name}»`);
 }
 
 function undoPurchase(id) {
@@ -690,11 +726,16 @@ function undoPurchase(id) {
     showToast("Конверт удалён. Сначала восстановите его, затем измените остаток вручную.");
     return;
   }
-  balance.amount = Math.round((balance.amount + purchase.amount) * 100) / 100;
+  const deposit = purchase.type === "deposit";
+  if (deposit && purchase.amount > balance.amount) {
+    showToast(`Нельзя отменить пополнение: в «${balance.name}» осталось только ${money(balance.amount)}`);
+    return;
+  }
+  balance.amount = Math.round((balance.amount + (deposit ? -purchase.amount : purchase.amount)) * 100) / 100;
   state.purchases = state.purchases.filter(item => item.id !== id);
   saveState();
   render();
-  showToast(`Покупка отменена, ${money(purchase.amount)} возвращены в «${balance.name}»`);
+  showToast(deposit ? `Пополнение отменено, ${money(purchase.amount)} вычтены из «${balance.name}»` : `Покупка отменена, ${money(purchase.amount)} возвращены в «${balance.name}»`);
 }
 
 function bytesToBase64Url(bytes) {
@@ -866,7 +907,9 @@ document.addEventListener("click", event => {
 
 document.addEventListener("change", event => {
   const target = event.target;
-  if (target.matches("[data-month]") && target.value) {
+  if (target.matches("#transaction-type")) {
+    updateTransactionForm();
+  } else if (target.matches("[data-month]") && target.value) {
     state.month = target.value;
     saveState();
     render();
