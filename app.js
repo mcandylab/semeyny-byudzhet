@@ -110,7 +110,8 @@ function normalizeState(value) {
       saved: Math.max(0, Number(item.saved) || 0),
       planned: Math.max(0, Number(item.planned) || 0),
       dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : "",
-      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0
+      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0,
+      closed: item.closed === true
     })) : [],
     purchases: Array.isArray(value.purchases) ? value.purchases.map((item, index) => ({
       id: String(item.id || `p${Date.now()}-${index}`),
@@ -200,13 +201,14 @@ function calculate() {
   const date20 = new Date(year, monthNumber - 1, 20);
   const pay5 = adjustedPayday(date5);
   const pay20 = adjustedPayday(date20);
-  const goalTarget = state.goals.reduce((total, goal) => total + goal.target, 0);
+  const activeGoals = state.goals.filter(goal => !goal.closed);
+  const goalTarget = activeGoals.reduce((total, goal) => total + goal.target, 0);
   const goalSaved = state.goals.reduce((total, goal) => total + goal.saved, 0);
-  const goalAllocated = state.goals.reduce((total, goal) => total + goal.planned, 0);
-  const goalAllocated5 = state.goals.filter(goal => goal.payday === 5).reduce((total, goal) => total + goal.planned, 0);
-  const goalAllocated20 = state.goals.filter(goal => goal.payday === 20).reduce((total, goal) => total + goal.planned, 0);
-  const goalWithoutPayday = state.goals.filter(goal => !goal.payday).reduce((total, goal) => total + goal.planned, 0);
-  const goalRemaining = state.goals.reduce((total, goal) => total + Math.max(0, goal.target - goal.saved - goal.planned), 0);
+  const goalAllocated = activeGoals.reduce((total, goal) => total + goal.planned, 0);
+  const goalAllocated5 = activeGoals.filter(goal => goal.payday === 5).reduce((total, goal) => total + goal.planned, 0);
+  const goalAllocated20 = activeGoals.filter(goal => goal.payday === 20).reduce((total, goal) => total + goal.planned, 0);
+  const goalWithoutPayday = activeGoals.filter(goal => !goal.payday).reduce((total, goal) => total + goal.planned, 0);
+  const goalRemaining = activeGoals.reduce((total, goal) => total + Math.max(0, goal.target - goal.saved - goal.planned), 0);
   const free = firstSalary + secondSalary - expenseSum5 - expenseSum20 - tithe5 - tithe20;
   const food5 = foodCalculation(5, expenses5, year, monthNumber);
   const food20 = foodCalculation(20, expenses20, year, monthNumber);
@@ -218,6 +220,7 @@ function calculate() {
     tithe: tithe5 + tithe20,
     free,
     goalTarget,
+    goalCount: activeGoals.length,
     goalSaved,
     goalAllocated,
     goalAllocated5,
@@ -462,7 +465,7 @@ function renderItemsCard(items, kind, calc, payday = null) {
   const payment = payday === 5 ? calc.p5 : payday === 20 ? calc.p20 : null;
   const title = payment ? `Расходы с выплаты ${payment.payday}-го` : "Сейчас есть и на что";
   const subtitle = payment ? `${escapeHtml(payment.period)} · выплата ${dateFormatter.format(payment.date)}` : "Текущие остатки по конвертам и целям";
-  const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday) : [];
+  const savingsGoals = payment ? state.goals.filter(goal => !goal.closed && goal.payday === payment.payday) : [];
   const savingsRows = savingsGoals.map(goal => `<tr class="planned-saving-row">
     <td><strong>Накопление: ${escapeHtml(goal.name)}</strong>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
     <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)} с этой зарплаты"></td>
@@ -520,25 +523,31 @@ function renderBalancesSection(calc) {
 
 function renderGoals(calc) {
   const rows = state.goals.length ? state.goals.map(goal => {
-    const covered = goal.saved + goal.planned;
-    const remaining = goal.target - covered;
+    const covered = goal.closed ? goal.target : goal.saved + goal.planned;
+    const remaining = goal.closed ? 0 : Math.max(0, goal.target - covered);
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
-    return `<tr>
+    const status = goal.closed
+      ? `<span class="pill gold">Закрыта</span>`
+      : `<strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div>`;
+    return `<tr class="${goal.closed ? "goal-closed-row" : ""}">
       <td><input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></td>
       <td><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></td>
       <td><select class="category-select" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="payday" aria-label="С какой зарплаты отложить"><option value="0" ${goal.payday === 0 ? "selected" : ""}>Не выбрано</option><option value="5" ${goal.payday === 5 ? "selected" : ""}>ЗП 5-го</option><option value="20" ${goal.payday === 20 ? "selected" : ""}>ЗП 20-го</option></select></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить с выбранной зарплаты"></td>
-      <td class="goal-remaining"><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></td>
-      <td><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></td>
+      <td class="goal-remaining">${status}</td>
+      <td><div class="row-actions"><button class="button ghost small" data-action="close-goal" data-id="${escapeHtml(goal.id)}">${goal.closed ? "Открыть" : "Закрыть"}</button><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></div></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="8"><div class="empty">Добавьте первую цель.</div></td></tr>`;
+  }).join("") : `<tr><td colspan="8"><div class="empty">Пока нет ни одной цели.</div></td></tr>`;
   const cards = state.goals.length ? state.goals.map(goal => {
-    const covered = goal.saved + goal.planned;
-    const remaining = goal.target - covered;
+    const covered = goal.closed ? goal.target : goal.saved + goal.planned;
+    const remaining = goal.closed ? 0 : Math.max(0, goal.target - covered);
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
-    return `<article class="goal-mobile-card">
+    const status = goal.closed
+      ? `<span class="pill gold">Закрыта</span>`
+      : `<strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div>`;
+    return `<article class="goal-mobile-card ${goal.closed ? "goal-closed-row" : ""}">
       <label class="field"><span class="field-label">Цель</span><input class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></label>
       <div class="goal-mobile-grid">
         <label class="field"><span class="field-label">Дата</span><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></label>
@@ -547,22 +556,22 @@ function renderGoals(calc) {
         <label class="field"><span class="field-label">Уже отложено, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></label>
         <label class="field"><span class="field-label">Отложить с этой ЗП, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить с выбранной зарплаты"></label>
       </div>
-      <div class="goal-mobile-footer"><div class="goal-remaining"><span class="field-label">Остаётся собрать</span><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></div><button class="button danger small" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}">Удалить</button></div>
+      <div class="goal-mobile-footer"><div class="goal-remaining"><span class="field-label">Остаётся собрать</span>${status}</div><div class="row-actions"><button class="button secondary small" data-action="close-goal" data-id="${escapeHtml(goal.id)}">${goal.closed ? "Открыть" : "Закрыть"}</button><button class="button danger small" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}">Удалить</button></div></div>
     </article>`;
   }).join("") : `<div class="empty">Добавьте первую цель.</div>`;
   return `<section>
     <div class="stats">
-      ${renderStat("На все цели", calc.goalTarget, `${state.goals.length} целей`, "accent")}
+      ${renderStat("На активные цели", calc.goalTarget, `${calc.goalCount} целей`, "accent")}
       ${renderStat("Уже отложено", calc.goalSaved, "Деньги уже есть")}
       ${renderStat("Выделяем сейчас", calc.goalAllocated, "Из свободного остатка")}
       ${renderStat("Ещё нужно собрать", calc.goalRemaining, "После всех выделений")}
     </div>
     <div class="notice ${calc.unassigned < 0 ? "negative" : ""}"><span class="notice-dot"></span><div><strong>Свободно после расходов и десятины: ${money(calc.free)}.</strong> ${calc.unassigned >= 0 ? `После выделения на цели останется нераспределёнными ${money(calc.unassigned)}.` : `Распределено на ${money(Math.abs(calc.unassigned))} больше, чем есть свободных денег.`}${calc.goalWithoutPayday > 0 ? `<br>На ${money(calc.goalWithoutPayday)} ещё не выбрана зарплата.` : ""}</div></div>
     <div class="card">
-      <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Колонка «Отложить с этой ЗП» уменьшает выбранную выплату. Поле «Уже отложено» — деньги, которые уже есть.</p></div><span class="pill">${state.goals.length} целей</span></div>
+      <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Колонка «Отложить с этой ЗП» уменьшает выбранную выплату. Закрытая цель не учитывается в активных суммах.</p></div><span class="pill">${calc.goalCount} активных</span></div>
       <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Дата</th><th>С какой ЗП</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Отложить с этой ЗП, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="goal-cards">${cards}</div>
-      <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Общая сумма целей<strong>${money(calc.goalTarget)}</strong></div></div>
+      <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Сумма активных целей<strong>${money(calc.goalTarget)}</strong></div></div>
     </div>
   </section>`;
 }
@@ -882,10 +891,23 @@ document.addEventListener("click", event => {
     delete state.workdays[state.month];
     saveState();
     render();
+  } else if (action === "close-goal") {
+    const goal = state.goals.find(entry => entry.id === button.dataset.id);
+    if (!goal) return;
+    const closing = !goal.closed;
+    const message = closing
+      ? `Закрыть цель «${goal.name}»? Она перестанет учитываться в планах накопления.`
+      : `Снова открыть цель «${goal.name}»?`;
+    if (!window.confirm(message)) return;
+    goal.closed = closing;
+    if (closing) goal.planned = 0;
+    saveState();
+    render();
+    showToast(closing ? "Цель закрыта" : "Цель снова активна");
   } else if (action === "add") {
     const kind = button.dataset.kind;
     const item = kind === "goals"
-      ? { id: `g${Date.now()}`, name: "Новая цель", target: 0, saved: 0, planned: 0, dueDate: "", payday: 0 }
+      ? { id: `g${Date.now()}`, name: "Новая цель", target: 0, saved: 0, planned: 0, dueDate: "", payday: 0, closed: false }
       : { id: `${kind === "expenses" ? "e" : "b"}${Date.now()}`, name: "Новая позиция", amount: 0, category: "other" };
     if (kind === "expenses") item.payday = Number(button.dataset.payday) === 20 ? 20 : 5;
     state[kind].push(item);

@@ -149,6 +149,9 @@ td:last-child { width: 42px; padding-right: 0; }
 .name-input:focus, .amount-input:focus, .category-select:focus { border-color: #b8c9c0; background: #fff; }
 .delete-button { opacity: .45; }
 tr:hover .delete-button { opacity: 1; }
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.goal-closed-row { opacity: .62; }
+.goal-closed-row .goal-remaining { opacity: 1; }
 .table-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
 .table-total { text-align: right; font-size: 13px; color: var(--muted); }
 .table-total strong { display: block; margin-top: 3px; color: var(--ink); font-size: 20px; }
