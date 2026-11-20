@@ -110,8 +110,7 @@ function normalizeState(value) {
       saved: Math.max(0, Number(item.saved) || 0),
       planned: Math.max(0, Number(item.planned) || 0),
       dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : "",
-      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0,
-      paidMonths: Array.isArray(item.paidMonths) ? item.paidMonths.filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) : []
+      payday: [5, 20].includes(Number(item.payday)) ? Number(item.payday) : 0
     })) : [],
     purchases: Array.isArray(value.purchases) ? value.purchases.map((item, index) => ({
       id: String(item.id || `p${Date.now()}-${index}`),
@@ -465,16 +464,17 @@ function renderItemsCard(items, kind, calc, payday = null) {
   const subtitle = payment ? `${escapeHtml(payment.period)} · выплата ${dateFormatter.format(payment.date)}` : "Текущие остатки по конвертам и целям";
   const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday && goal.planned > 0) : [];
   const savingsRows = savingsGoals.map(goal => `<tr class="planned-saving-row">
-    <td><div class="name-with-check">${paidCheckbox(goal, "goals", "Отложено")}<strong>Накопление: ${escapeHtml(goal.name)}</strong></div>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
-    <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)}"></td>
+    <td><strong>Накопление: ${escapeHtml(goal.name)}</strong>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
+    <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)} с этой зарплаты"></td>
     <td><span class="pill">Из целей</span></td><td></td>
   </tr>`).join("");
   const total = sumItems(items) + (payment?.goalAllocated || 0);
   return `<section class="card">
     <div class="card-head"><div><p class="eyebrow">Можно редактировать</p><h2>${title}</h2><p class="card-subtitle">${subtitle}</p></div><span class="pill">${items.length + savingsGoals.length} поз.</span></div>
-    ${payment ? `<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px">
+    ${payment ? `<div class="stats" style="margin-bottom:20px">
       ${renderStat("Выплата", payment.salary, `${payment.days} рабочих дней`)}
       ${renderStat("Десятина", payment.tithe, `${state.settings.titheRate}% от выплаты`)}
+      ${renderStat("На цели с этой выплаты", payment.goalAllocated, "Выделено из зарплаты")}
       ${renderStat("После всех вычетов", payment.afterGoals, "Включая накопления на цели", payment.afterGoals < 0 ? "negative" : "")}
     </div>` : ""}
     <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th>${kind === "balances" ? "<th>На каждый день</th>" : ""}<th></th></tr></thead><tbody>${renderRows(items, kind)}${savingsRows}</tbody></table></div>
@@ -524,12 +524,12 @@ function renderGoals(calc) {
     const remaining = goal.target - covered;
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
     return `<tr>
-      <td><div class="name-with-check">${paidCheckbox(goal, "goals", "Отложено")}<input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></div></td>
+      <td><input class="name-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></td>
       <td><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></td>
       <td><select class="category-select" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="payday" aria-label="С какой зарплаты отложить"><option value="0" ${goal.payday === 0 ? "selected" : ""}>Не выбрано</option><option value="5" ${goal.payday === 5 ? "selected" : ""}>ЗП 5-го</option><option value="20" ${goal.payday === 20 ? "selected" : ""}>ЗП 20-го</option></select></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></td>
-      <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить"></td>
+      <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить с выбранной зарплаты"></td>
       <td class="goal-remaining"><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></td>
       <td><button class="icon-button delete-button" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}" aria-label="Удалить ${escapeHtml(goal.name)}">×</button></td>
     </tr>`;
@@ -539,14 +539,13 @@ function renderGoals(calc) {
     const remaining = goal.target - covered;
     const progress = goal.target > 0 ? Math.min(100, covered / goal.target * 100) : 0;
     return `<article class="goal-mobile-card">
-      <label class="paid-check-mobile">${paidCheckbox(goal, "goals", "Отложено")}<span>Отложено в этом месяце</span></label>
       <label class="field"><span class="field-label">Цель</span><input class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="name" value="${escapeHtml(goal.name)}" aria-label="Название цели"></label>
       <div class="goal-mobile-grid">
         <label class="field"><span class="field-label">Дата</span><input class="settings-input" type="date" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="dueDate" value="${goal.dueDate}" aria-label="Дата цели"></label>
         <label class="field"><span class="field-label">С какой ЗП</span><select class="settings-input" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="payday" aria-label="С какой зарплаты отложить"><option value="0" ${goal.payday === 0 ? "selected" : ""}>Не выбрано</option><option value="5" ${goal.payday === 5 ? "selected" : ""}>ЗП 5-го</option><option value="20" ${goal.payday === 20 ? "selected" : ""}>ЗП 20-го</option></select></label>
         <label class="field"><span class="field-label">Нужно, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="target" value="${goal.target}" aria-label="Нужно для цели"></label>
         <label class="field"><span class="field-label">Уже отложено, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="saved" value="${goal.saved}" aria-label="Уже отложено"></label>
-        <label class="field"><span class="field-label">Отложить, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить"></label>
+        <label class="field"><span class="field-label">Отложить с этой ЗП, ₽</span><input class="amount-input settings-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить с выбранной зарплаты"></label>
       </div>
       <div class="goal-mobile-footer"><div class="goal-remaining"><span class="field-label">Остаётся собрать</span><strong>${remaining > 0 ? money(remaining) : "Цель закрыта"}</strong><div class="meter"><span style="width:${progress}%"></span></div></div><button class="button danger small" data-action="delete" data-kind="goals" data-id="${escapeHtml(goal.id)}">Удалить</button></div>
     </article>`;
@@ -560,8 +559,8 @@ function renderGoals(calc) {
     </div>
     <div class="notice ${calc.unassigned < 0 ? "negative" : ""}"><span class="notice-dot"></span><div><strong>Свободно после расходов и десятины: ${money(calc.free)}.</strong> ${calc.unassigned >= 0 ? `После выделения на цели останется нераспределёнными ${money(calc.unassigned)}.` : `Распределено на ${money(Math.abs(calc.unassigned))} больше, чем есть свободных денег.`}${calc.goalWithoutPayday > 0 ? `<br>На ${money(calc.goalWithoutPayday)} ещё не выбрана зарплата.` : ""}</div></div>
     <div class="card">
-      <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Укажите дату, с какой зарплаты и сколько отложить. Это уменьшит остаток выбранной выплаты.</p></div><span class="pill">${state.goals.length} целей</span></div>
-      <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Дата</th><th>С какой ЗП</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Отложить, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="card-head"><div><p class="eyebrow">Планы и накопления</p><h2>На что нужны деньги</h2><p class="card-subtitle">Колонка «Отложить с этой ЗП» уменьшает выбранную выплату. Поле «Уже отложено» — деньги, которые уже есть.</p></div><span class="pill">${state.goals.length} целей</span></div>
+      <div class="table-wrap"><table class="goals-table"><thead><tr><th>Цель</th><th>Дата</th><th>С какой ЗП</th><th>Нужно, ₽</th><th>Уже отложено, ₽</th><th>Отложить с этой ЗП, ₽</th><th>Остаётся собрать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="goal-cards">${cards}</div>
       <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="goals">+ Добавить цель</button><div class="table-total">Общая сумма целей<strong>${money(calc.goalTarget)}</strong></div></div>
     </div>

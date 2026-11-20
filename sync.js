@@ -162,8 +162,10 @@ class BudgetSync {
       if (action.path.length === 1) result[action.path[0]] = (result[action.path[0]] || "") + action.part;
       else result[action.path[0]][action.path[1]] = (result[action.path[0]][action.path[1]] || "") + action.part;
     } else if (action.kind === "item") {
-      const items = result[action.collection].filter(item => item.id !== action.item.id);
-      items.push(this.clone(action.item));
+      const items = this.clone(result[action.collection]);
+      const index = items.findIndex(item => item.id === action.item.id);
+      if (index >= 0) items[index] = this.clone(action.item);
+      else items.push(this.clone(action.item));
       result[action.collection] = items;
     } else if (action.kind === "delete") {
       result[action.collection] = result[action.collection].filter(item => item.id !== action.id);
