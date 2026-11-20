@@ -462,7 +462,7 @@ function renderItemsCard(items, kind, calc, payday = null) {
   const payment = payday === 5 ? calc.p5 : payday === 20 ? calc.p20 : null;
   const title = payment ? `Расходы с выплаты ${payment.payday}-го` : "Сейчас есть и на что";
   const subtitle = payment ? `${escapeHtml(payment.period)} · выплата ${dateFormatter.format(payment.date)}` : "Текущие остатки по конвертам и целям";
-  const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday && goal.planned > 0) : [];
+  const savingsGoals = payment ? state.goals.filter(goal => goal.payday === payment.payday) : [];
   const savingsRows = savingsGoals.map(goal => `<tr class="planned-saving-row">
     <td><strong>Накопление: ${escapeHtml(goal.name)}</strong>${goal.dueDate ? `<small>к ${new Date(`${goal.dueDate}T12:00:00`).toLocaleDateString("ru-RU")}</small>` : ""}</td>
     <td><input class="amount-input" type="number" min="0" step="1" data-kind="goals" data-id="${escapeHtml(goal.id)}" data-field="planned" value="${goal.planned}" aria-label="Сколько отложить на ${escapeHtml(goal.name)} с этой зарплаты"></td>
