@@ -101,8 +101,7 @@ function normalizeState(value) {
       id: String(item.id || `b${Date.now()}-${index}`),
       name: String(item.name || "Без названия"),
       amount: Math.max(0, Number(item.amount) || 0),
-      category: CATEGORIES[item.category] ? item.category : "other",
-      paidMonths: Array.isArray(item.paidMonths) ? item.paidMonths.filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) : []
+      category: CATEGORIES[item.category] ? item.category : "other"
     })) : [],
     goals: Array.isArray(value.goals) ? value.goals.map((item, index) => ({
       id: String(item.id || `g${Date.now()}-${index}`),
@@ -449,9 +448,9 @@ function renderRows(items, kind) {
   if (!items.length) return `<tr><td colspan="${columns}"><div class="empty">Пока нет ни одной позиции.</div></td></tr>`;
   return items.map(item => {
     const daily = kind === "balances" ? currentFoodDaily(item) : null;
-    const paidLabel = kind === "balances" ? "Переведено" : "Оплачено";
+    const checkbox = kind === "balances" ? "" : paidCheckbox(item, kind, "Оплачено");
     return `<tr>
-      <td><div class="name-with-check">${paidCheckbox(item, kind, paidLabel)}<input class="name-input" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="name" value="${escapeHtml(item.name)}" aria-label="Название"></div></td>
+      <td><div class="name-with-check">${checkbox}<input class="name-input" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="name" value="${escapeHtml(item.name)}" aria-label="Название"></div></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="amount" value="${Number(item.amount) || 0}" aria-label="Сумма в рублях"></td>
       <td><select class="category-select" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="category" aria-label="Категория">${categoryOptions(item.category)}</select></td>
       ${kind === "balances" ? `<td>${daily ? `<div class="balance-daily"><strong>${daily.remainingDays > 0 ? `${money(daily.daily)} / день` : "Дни закрыты"}</strong><span>${daily.remainingDays > 0 ? `осталось ${daily.remainingDays} дн.` : `покрыто ${daily.coveredDays} дн.`}${daily.coveredDays > 0 && daily.remainingDays > 0 ? ` · закрыто ${daily.coveredDays}` : ""}</span></div>` : "—"}</td>` : ""}
