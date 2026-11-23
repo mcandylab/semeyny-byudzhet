@@ -404,39 +404,6 @@ function categoryOptions(selected) {
   return Object.entries(CATEGORIES).map(([key, label]) => `<option value="${key}" ${key === selected ? "selected" : ""}>${label}</option>`).join("");
 }
 
-function currentFoodDaily(balance) {
-  if (!["еда", "продукты"].includes(balance.name.trim().toLowerCase())) return null;
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const day = today.getDate();
-  let start;
-  let end;
-  if (day <= 5) {
-    start = new Date(year, month - 1, 21, 12);
-    end = new Date(year, month, 5, 12);
-  } else if (day <= 20) {
-    start = new Date(year, month, 6, 12);
-    end = new Date(year, month, 20, 12);
-  } else {
-    start = new Date(year, month, 21, 12);
-    end = new Date(year, month + 1, 5, 12);
-  }
-  const startKey = dateKey(start);
-  const endKey = dateKey(end);
-  const periodDays = Math.max(0, Math.round((end - today) / 86400000) + 1);
-  const coveredDays = state.purchases
-    .filter(purchase => purchase.balanceId === balance.id && purchase.date >= startKey && purchase.date <= endKey)
-    .reduce((total, purchase) => total + purchase.days, 0);
-  const remainingDays = Math.max(0, periodDays - coveredDays);
-  return {
-    remainingDays,
-    coveredDays,
-    daily: remainingDays > 0 ? Math.round(balance.amount / remainingDays) : 0
-  };
-}
-
 function isPaid(item) {
   return Array.isArray(item.paidMonths) && item.paidMonths.includes(state.month);
 }
@@ -446,16 +413,13 @@ function paidCheckbox(item, kind, label) {
 }
 
 function renderRows(items, kind) {
-  const columns = kind === "balances" ? 5 : 4;
-  if (!items.length) return `<tr><td colspan="${columns}"><div class="empty">Пока нет ни одной позиции.</div></td></tr>`;
+  if (!items.length) return `<tr><td colspan="4"><div class="empty">Пока нет ни одной позиции.</div></td></tr>`;
   return items.map(item => {
-    const daily = kind === "balances" ? currentFoodDaily(item) : null;
     const checkbox = kind === "balances" ? "" : paidCheckbox(item, kind, "Оплачено");
     return `<tr>
       <td><div class="name-with-check">${checkbox}<input class="name-input" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="name" value="${escapeHtml(item.name)}" aria-label="Название"></div></td>
       <td><input class="amount-input" type="number" min="0" step="1" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="amount" value="${Number(item.amount) || 0}" aria-label="Сумма в рублях"></td>
       <td><select class="category-select" data-kind="${kind}" data-id="${escapeHtml(item.id)}" data-field="category" aria-label="Категория">${categoryOptions(item.category)}</select></td>
-      ${kind === "balances" ? `<td>${daily ? `<div class="balance-daily"><strong>${daily.remainingDays > 0 ? `${money(daily.daily)} / день` : "Дни закрыты"}</strong><span>${daily.remainingDays > 0 ? `осталось ${daily.remainingDays} дн.` : `покрыто ${daily.coveredDays} дн.`}${daily.coveredDays > 0 && daily.remainingDays > 0 ? ` · закрыто ${daily.coveredDays}` : ""}</span></div>` : "—"}</td>` : ""}
       <td><button class="icon-button delete-button" data-action="delete" data-kind="${kind}" data-id="${escapeHtml(item.id)}" aria-label="Удалить ${escapeHtml(item.name)}">×</button></td>
     </tr>`;
   }).join("");
@@ -480,7 +444,7 @@ function renderItemsCard(items, kind, calc, payday = null) {
       ${renderStat("На цели с этой выплаты", payment.goalAllocated, "Выделено из зарплаты")}
       ${renderStat("После всех вычетов", payment.afterGoals, "Включая накопления на цели", payment.afterGoals < 0 ? "negative" : "")}
     </div>` : ""}
-    <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th>${kind === "balances" ? "<th>На каждый день</th>" : ""}<th></th></tr></thead><tbody>${renderRows(items, kind)}${savingsRows}</tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Название</th><th>Сумма, ₽</th><th>Категория</th><th></th></tr></thead><tbody>${renderRows(items, kind)}${savingsRows}</tbody></table></div>
     <div class="table-footer"><button class="button secondary small" data-action="add" data-kind="${kind}" ${payday ? `data-payday="${payday}"` : ""}>+ Добавить позицию</button><div class="table-total">Итого<strong>${money(total)}</strong></div></div>
   </section>`;
 }

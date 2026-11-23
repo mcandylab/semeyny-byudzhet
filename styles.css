@@ -174,9 +174,6 @@ tr:hover .delete-button { opacity: 1; }
 .goal-mobile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .goal-mobile-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .goal-mobile-footer .goal-remaining { flex: 1; display: grid; gap: 4px; }
-.balance-daily { display: grid; gap: 3px; text-align: right; white-space: nowrap; }
-.balance-daily strong { color: var(--green); font-size: 13px; }
-.balance-daily span { color: var(--muted); font-size: 11px; }
 .goal-remaining strong { font-size: 13px; white-space: nowrap; }
 .goal-remaining .meter { margin: 8px 0 0; }
 .planned-saving-row td { background: var(--green-soft); }
