@@ -7,3 +7,8 @@ node_modules/
 budget-data.local.json
 sync-account.local.json
 .DS_Store
+
+# PocketBase: the binary, the live database and decrypted legacy exports stay local
+pocketbase/pocketbase
+pocketbase/pb_data/
+pocketbase/import/
