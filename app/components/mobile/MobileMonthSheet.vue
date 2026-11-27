@@ -1,16 +1,24 @@
 <script setup>
+import { pad } from "~/utils/budget";
+import { MONTH_TITLES, monthInfo, monthKey } from "~/utils/family";
+
 defineEmits(["close"]);
 
 const SHORT = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
-const FULL = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
-const TODAY = { year: 2026, month: 10 };
 
-const year = ref(TODAY.year);
-const selected = reactive({ ...TODAY });
+const budget = useFamilyBudget();
+const today = monthInfo(monthKey());
+const start = monthInfo(budget.month);
+const year = ref(start.year);
+const selected = reactive({ year: start.year, month: start.index });
 
 function pick(index) {
   selected.year = year.value;
   selected.month = index;
+}
+
+function show() {
+  budget.month = `${selected.year}-${pad(selected.month + 1)}`;
 }
 </script>
 
@@ -26,7 +34,7 @@ function pick(index) {
         v-for="(label, index) in SHORT"
         :key="label"
         type="button"
-        :class="{ on: selected.year === year && selected.month === index, now: TODAY.year === year && TODAY.month === index }"
+        :class="{ on: selected.year === year && selected.month === index, now: today.year === year && today.index === index }"
         :aria-pressed="selected.year === year && selected.month === index"
         @click="pick(index)"
       >
@@ -35,7 +43,8 @@ function pick(index) {
     </div>
     <p class="m-hint m-hint--flush">Расходы и цели общие для всех месяцев. Рабочие дни и отметки «оплачено» у каждого месяца свои.</p>
     <template #footer>
-      <button class="m-btn m-btn--primary" type="button" @click="$emit('close')">Показать {{ FULL[selected.month] }} {{ selected.year }}</button>
+      <button v-if="selected.year !== today.year || selected.month !== today.index" class="m-btn m-btn--ghost" type="button" @click="budget.month = today.key; $emit('close')">Сейчас</button>
+      <button class="m-btn m-btn--primary" type="button" @click="show(); $emit('close')">Показать {{ MONTH_TITLES[selected.month].toLowerCase() }} {{ selected.year }}</button>
     </template>
   </MobileSheet>
 </template>

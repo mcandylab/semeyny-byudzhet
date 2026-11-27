@@ -1,14 +1,44 @@
 <script setup>
-defineEmits(["go"]);
+const budget = useFamilyBudget();
 
 const coins = [0, 1, 2, 3];
+const mode = ref("login");
+const busy = ref(false);
+const error = ref("");
+const form = reactive({ username: "", password: "", code: "", name: "", repeat: "" });
+
+const joining = computed(() => mode.value === "join");
+const canSubmit = computed(() => {
+  if (!form.username.trim() || !form.password) return false;
+  return !joining.value || (form.code.replace(/[^a-z0-9]/gi, "").length === 8 && form.password.length >= 8 && form.repeat === form.password);
+});
+const hint = computed(() => {
+  if (!joining.value) return "";
+  if (form.password && form.password.length < 8) return "Пароль — не короче 8 символов";
+  if (form.repeat && form.repeat !== form.password) return "Пароли не совпадают";
+  return "";
+});
+
+function switchMode(value) {
+  mode.value = value;
+  error.value = "";
+}
+
+async function submit() {
+  if (!canSubmit.value || busy.value) return;
+  busy.value = true;
+  error.value = joining.value
+    ? await budget.join({ code: form.code, name: form.name.trim(), username: form.username, password: form.password, passwordConfirm: form.repeat })
+    : await budget.login(form.username, form.password);
+  busy.value = false;
+}
 </script>
 
 <template>
   <div class="m-welcome">
     <div class="m-welcome-orbits" aria-hidden="true"><i /><i /><i /></div>
 
-    <svg class="m-welcome-art" viewBox="0 0 340 300" aria-hidden="true">
+    <svg class="m-welcome-art m-welcome-art--compact" viewBox="0 30 340 240" aria-hidden="true">
       <defs>
         <linearGradient id="m-w-purple" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#8E63F8" />
@@ -37,7 +67,7 @@ const coins = [0, 1, 2, 3];
           <circle cx="52" cy="238" r="52" />
         </g>
         <text x="74" y="156" font-size="13" font-weight="600" fill="rgba(255,255,255,.78)">Выплата 20-го</text>
-        <text x="74" y="190" font-size="27" font-weight="700" fill="#fff" letter-spacing="-0.8">81 000 ₽</text>
+        <text x="74" y="190" font-size="27" font-weight="700" fill="#fff" letter-spacing="-0.8">₽ ₽ ₽</text>
         <rect x="74" y="204" width="70" height="20" rx="10" fill="rgba(255,255,255,.18)" />
       </g>
 
@@ -59,16 +89,26 @@ const coins = [0, 1, 2, 3];
 
     <div class="m-welcome-copy">
       <h1 class="m-welcome-title"><b>Семейный бюджет</b> под контролем</h1>
-      <p class="m-welcome-text">Две зарплаты, обязательные платежи, конверты и цели — в одном месте и у обоих под рукой.</p>
+      <p class="m-welcome-text">Две зарплаты, платежи, конверты и цели — общие для всей семьи.</p>
     </div>
 
-    <button class="m-start" type="button" @click="$emit('go', 'home')">
-      <span class="m-start-handle"><MobileIcon name="arrow-right" :size="24" /></span>
-      <span class="m-start-label">Создать бюджет</span>
-      <span class="m-start-arrows" aria-hidden="true"><MobileIcon name="chevron-right" :size="18" /><MobileIcon name="chevron-right" :size="18" /><MobileIcon name="chevron-right" :size="18" /></span>
-      <span class="m-start-lock" aria-hidden="true"><MobileIcon name="lock" :size="22" /></span>
-    </button>
-    <button class="m-welcome-secondary" type="button"><MobileIcon name="upload" :size="18" />Восстановить из резервной копии</button>
-    <p class="m-welcome-hint">Есть семейная ссылка? Откройте её целиком, вместе с частью после #.</p>
+    <form class="m-login" @submit.prevent="submit">
+      <div class="m-segment" role="tablist" aria-label="Вход">
+        <button type="button" role="tab" :aria-selected="!joining" :class="{ on: !joining }" @click="switchMode('login')">Вход</button>
+        <button type="button" role="tab" :aria-selected="joining" :class="{ on: joining }" @click="switchMode('join')">По приглашению</button>
+      </div>
+      <template v-if="joining">
+        <input v-model="form.code" class="m-input m-input--code" placeholder="Код: XXXX-XXXX" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" aria-label="Код приглашения">
+        <input v-model="form.name" class="m-input" placeholder="Как вас зовут" autocomplete="given-name" aria-label="Имя">
+      </template>
+      <input v-model="form.username" class="m-input" placeholder="Логин" autocomplete="username" autocapitalize="none" spellcheck="false" aria-label="Логин">
+      <input v-model="form.password" class="m-input" type="password" :placeholder="joining ? 'Придумайте пароль' : 'Пароль'" :autocomplete="joining ? 'new-password' : 'current-password'" aria-label="Пароль">
+      <input v-if="joining" v-model="form.repeat" class="m-input" type="password" placeholder="Пароль ещё раз" autocomplete="new-password" aria-label="Пароль ещё раз">
+      <p v-if="error || hint" class="m-login-error" :class="{ 'm-login-error--hint': !error }" role="alert">{{ error || hint }}</p>
+      <button class="m-btn m-btn--primary m-login-submit" type="submit" :disabled="!canSubmit || busy">
+        {{ busy ? 'Подождите…' : joining ? 'Присоединиться к семье' : 'Войти' }}<MobileIcon v-if="!busy" name="arrow-right" :size="20" />
+      </button>
+      <p class="m-welcome-hint">{{ joining ? 'Код приглашения даёт владелец бюджета в настройках. Он действует один раз.' : 'Почта не нужна: только логин и пароль.' }}</p>
+    </form>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import { daysLabel, envelopeByName } from "~/utils/mobile-mock";
+import { dayLabel, daysLabel } from "~/utils/family";
 
 const props = defineProps({
   item: { type: Object, required: true },
@@ -7,10 +7,9 @@ const props = defineProps({
 });
 
 const deposit = computed(() => props.item.type === "deposit");
-const envelope = computed(() => envelopeByName[props.item.envelope]);
 const meta = computed(() => {
   const parts = [];
-  if (props.withDate) parts.push(props.item.date);
+  if (props.withDate) parts.push(dayLabel(props.item.date));
   parts.push(`${deposit.value ? "в" : "из"} «${props.item.envelope}»`);
   if (!deposit.value && props.item.days) parts.push(`на ${daysLabel(props.item.days)}`);
   return parts.join(" · ");
@@ -19,8 +18,8 @@ const meta = computed(() => {
 
 <template>
   <span class="m-row">
-    <span class="m-row-icon" :style="{ color: deposit ? 'var(--m-green)' : envelope?.color }">
-      <MobileIcon :name="deposit ? 'deposit' : envelope?.icon || 'cart'" />
+    <span class="m-row-icon" :style="{ color: deposit ? 'var(--m-green)' : item.color }">
+      <MobileIcon :name="deposit ? 'deposit' : item.icon" />
     </span>
     <span class="m-row-main">
       <span class="m-row-title">{{ item.name }}</span>

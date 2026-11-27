@@ -1,5 +1,5 @@
 <script setup>
-import { fmt } from "~/utils/mobile-mock";
+import { fmt } from "~/utils/family";
 
 defineProps({
   value: { type: Number, required: true },

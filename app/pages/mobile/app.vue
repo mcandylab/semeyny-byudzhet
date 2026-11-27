@@ -1,9 +1,11 @@
 <script setup>
+// Demo data in memory: the real app over PocketBase is at /app.
 const SCREENS = ["welcome", "home", "payday", "envelopes", "goals", "analytics", "settings"];
-const SHEETS = ["month", "expense", "operation", "goal", "share", "note", "recovery"];
+const SHEETS = ["month", "expense", "operation", "envelope", "goal", "note", "salary", "family", "account"];
 
 const route = useRoute();
 const screen = SCREENS.includes(route.query.screen) ? route.query.screen : "home";
+const signedOut = screen === "welcome";
 const sheet = SHEETS.includes(route.query.sheet) ? route.query.sheet : "";
 const payday = route.query.payday === "5" ? 5 : 20;
 
@@ -21,7 +23,7 @@ useHead({
 <template>
   <div class="proto">
     <NuxtLink to="/mobile" class="proto-back">← Все экраны</NuxtLink>
-    <div class="proto-device"><MobileApp :screen="screen" :sheet="sheet" :payday="payday" /></div>
+    <div class="proto-device"><MobileApp :signed-out="signedOut" :screen="signedOut ? 'home' : screen" :sheet="sheet" :payday="payday" /></div>
   </div>
 </template>
 

@@ -22,18 +22,18 @@ onRecordCreateRequest((e) => {
   e.next();
 }, "invites");
 
-// An operation keeps who recorded it and the envelope name at that moment.
-onRecordCreateRequest((e) => {
-  let envelope;
-  try {
-    envelope = e.app.findRecordById("envelopes", e.record.getString("envelope"));
-  } catch {
-    throw new BadRequestError("Выберите конверт");
-  }
-  e.record.set("envelope_name", envelope.getString("name"));
-  if (!e.hasSuperuserAuth() && e.auth) e.record.set("created_by", e.auth.id);
-  e.next();
-}, "operations");
+// Operations move money, so they change only through these routes: the operation
+// and the envelope balance are saved together (see recordOperation in family_lib.js).
+// The collection itself is read-only for the app (pb_migrations/1795806002_family_operations.js).
+routerAdd("POST", "/api/family/operations", (e) => {
+  const family = require(`${__hooks}/family_lib.js`);
+  return e.json(200, family.recordOperation(e.app, e.auth, e.requestInfo().body || {}));
+}, $apis.requireAuth("users"), $apis.bodyLimit(16 * 1024));
+
+routerAdd("DELETE", "/api/family/operations/{id}", (e) => {
+  const family = require(`${__hooks}/family_lib.js`);
+  return e.json(200, family.undoOperation(e.app, e.auth, e.request.pathValue("id")));
+}, $apis.requireAuth("users"));
 
 function familyCommand(use, short, run) {
   const command = new Command({ use, short, run });

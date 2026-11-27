@@ -119,6 +119,92 @@ function joinByInvite(app, body) {
   return user;
 }
 
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// "12 450 ₽" without Intl, which the JS runtime of PocketBase does not localize.
+function rubles(value) {
+  const [whole, cents] = String(round2(Math.abs(value))).split(".");
+  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${cents ? `,${cents.padEnd(2, "0")}` : ""} ₽`;
+}
+
+// An envelope of the signed-in user's household, or 404 for anything else.
+function ownEnvelope(app, auth, id) {
+  let envelope;
+  try {
+    envelope = app.findRecordById("envelopes", String(id || ""));
+  } catch {
+    throw new NotFoundError("Конверт не найден");
+  }
+  if (envelope.getString("household") !== auth.getString("household")) throw new NotFoundError("Конверт не найден");
+  return envelope;
+}
+
+// A purchase takes money out of an envelope, a deposit puts it in. The operation
+// and the new balance are saved in one transaction, so they can never disagree.
+function recordOperation(app, auth, body) {
+  const type = body.type === "deposit" || body.type === "purchase" ? body.type : "";
+  if (!type) throw new BadRequestError("Выберите покупку или пополнение");
+  const deposit = type === "deposit";
+  const amount = round2(Number(body.amount));
+  if (!(amount > 0)) throw new BadRequestError("Укажите сумму больше нуля");
+  if (amount > 100000000) throw new BadRequestError("Слишком большая сумма");
+  const date = String(body.date || "");
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)) throw new BadRequestError("Укажите дату операции");
+  const days = deposit ? 0 : Math.round(Number(body.days) || 0);
+  if (days < 0 || days > 366) throw new BadRequestError("Дней покупки: от 0 до 366");
+  const name = String(body.name || "").trim().slice(0, 200) || (deposit ? "Пополнение" : "Покупка");
+
+  let operation;
+  let envelope;
+  app.runInTransaction((txApp) => {
+    envelope = ownEnvelope(txApp, auth, body.envelope);
+    const title = envelope.getString("name");
+    if (envelope.getBool("archived")) throw new BadRequestError(`Конверт «${title}» в архиве`);
+    const balance = envelope.getFloat("balance");
+    if (!deposit && amount > balance) throw new BadRequestError(`В конверте «${title}» недостаточно: есть ${rubles(balance)}`);
+    envelope.set("balance", round2(balance + (deposit ? amount : -amount)));
+    txApp.save(envelope);
+
+    operation = new Record(txApp.findCollectionByNameOrId("operations"));
+    operation.set("envelope", envelope.id);
+    operation.set("envelope_name", title);
+    operation.set("type", type);
+    operation.set("name", name);
+    operation.set("amount", amount);
+    operation.set("days", days);
+    operation.set("date", `${date} 00:00:00.000Z`);
+    operation.set("created_by", auth.id);
+    txApp.save(operation);
+  });
+  return { operation, envelope };
+}
+
+// Undo returns the money of a purchase to its envelope or takes a deposit back out.
+function undoOperation(app, auth, id) {
+  let envelope;
+  app.runInTransaction((txApp) => {
+    let operation;
+    try {
+      operation = txApp.findRecordById("operations", String(id || ""));
+    } catch {
+      throw new NotFoundError("Операция не найдена");
+    }
+    envelope = ownEnvelope(txApp, auth, operation.getString("envelope"));
+    const title = envelope.getString("name");
+    if (envelope.getBool("archived")) throw new BadRequestError(`Конверт «${title}» в архиве. Верните его, чтобы отменить операцию`);
+    const deposit = operation.getString("type") === "deposit";
+    const amount = operation.getFloat("amount");
+    const balance = envelope.getFloat("balance");
+    if (deposit && amount > balance) throw new BadRequestError(`Нельзя отменить пополнение: в «${title}» осталось ${rubles(balance)}`);
+    envelope.set("balance", round2(balance + (deposit ? -amount : amount)));
+    txApp.save(envelope);
+    txApp.delete(operation);
+  });
+  return { envelope };
+}
+
 function categoryIds(app) {
   const ids = {};
   app.findAllRecords("categories").forEach((record) => { ids[record.getString("code")] = record.id; });
@@ -335,5 +421,7 @@ module.exports = {
   joinByInvite,
   normalizeUsername,
   ownerOf,
-  singleHousehold
+  recordOperation,
+  singleHousehold,
+  undoOperation
 };

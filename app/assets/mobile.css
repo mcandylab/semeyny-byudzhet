@@ -575,3 +575,71 @@ html.m-gallery-html body { background: #ebebeb; }
 @media (prefers-reduced-motion: reduce) {
   .m-app *, .m-app *::before, .m-app *::after { animation: none !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Рабочее приложение: вход, загрузка, состояния ---------- */
+.m-splash {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 100%;
+  padding: var(--m-top) 32px var(--m-bottom); color: var(--m-muted); font-size: 15px; text-align: center;
+}
+.m-splash .m-btn { flex: none; width: 100%; max-width: 280px; }
+.m-splash-mark {
+  display: grid; place-items: center; width: 72px; height: 72px; border-radius: 26px; color: #fff; background: var(--m-purple);
+  box-shadow: 0 16px 36px rgba(114, 63, 235, .35); animation: m-pulse 1.4s ease-in-out infinite;
+}
+.m-splash-mark--warn { color: var(--m-ink); background: var(--m-yellow); box-shadow: none; animation: none; }
+@keyframes m-pulse { 50% { transform: scale(.94); opacity: .8; } }
+
+.m-welcome-art--compact { max-width: 300px; margin: 0 auto; }
+.m-welcome-art--compact + .m-welcome-copy { margin-top: 0; }
+.m-login { position: relative; display: grid; gap: 10px; margin-top: 22px; }
+.m-login .m-segment { margin-bottom: 4px; }
+.m-login .m-segment button { min-height: 42px; font-size: 14px; font-weight: 700; }
+.m-login-submit { flex: none; margin-top: 4px; }
+.m-login-error { padding: 10px 14px; border-radius: 14px; color: var(--m-red); background: var(--m-red-soft); font-size: 13.5px; font-weight: 600; }
+.m-login-error--hint { color: var(--m-yellow); background: rgba(240, 220, 120, .08); }
+.m-input--code { font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 2px; text-transform: uppercase; }
+.m-input--code::placeholder { letter-spacing: 0; text-transform: none; }
+
+.m-dot--busy { background: var(--m-yellow); box-shadow: 0 0 0 3px rgba(240, 220, 120, .2); animation: m-pulse 1s ease-in-out infinite; }
+.m-dot--off { background: var(--m-red); box-shadow: 0 0 0 3px rgba(255, 122, 110, .2); }
+.m-minus { color: var(--m-red); }
+.m-empty { margin: 4px 4px 0; padding: 18px; border: 1.5px dashed var(--m-line-strong); border-radius: 22px; color: var(--m-muted); font-size: 13.5px; line-height: 1.5; text-align: center; }
+.m-hint--warn { color: var(--m-yellow); }
+.m-amount--short { color: var(--m-red); }
+
+.m-tile--add { place-content: center; justify-items: center; gap: 8px; border-style: dashed; color: var(--m-muted); background: transparent; font-size: 14px; font-weight: 600; }
+
+.m-env { position: relative; }
+.m-env-main { position: absolute; inset: 0; z-index: 0; border-radius: inherit; }
+.m-env > :not(.m-env-main) { position: relative; z-index: 1; pointer-events: none; }
+.m-env-more { display: grid; place-items: center; width: 36px; height: 36px; margin: -6px -6px 0 0; border-radius: 50%; color: var(--m-muted); pointer-events: auto; }
+.m-env-more:active { background: var(--m-surface-3); }
+.m-env-name small { color: var(--m-faint); font-size: 12px; font-weight: 700; }
+
+.m-mini--date, .m-input--date { position: relative; cursor: pointer; }
+.m-date-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; opacity: 0; cursor: pointer; }
+.m-date-input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; opacity: 0; cursor: pointer; }
+.m-input--date { flex: 1; }
+
+.m-toast--error .m-icon { background: var(--m-red); }
+.m-chip--danger { border-color: transparent; color: var(--m-red); background: var(--m-red-soft); }
+.m-invite { display: grid; gap: 8px; }
+.m-invite-code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+.m-btn--fit { flex: none; min-height: 54px; padding: 0 18px; font-size: 15px; }
+
+.m-profile { width: 100%; text-align: left; }
+.m-profile-body { display: grid; flex: 1; min-width: 0; }
+.m-profile-body .m-profile-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m-set-row--danger .m-set-label { color: var(--m-red); }
+
+/* Телефон в браузере: приложение на весь экран, на компьютере — колонка шириной телефона. */
+.m-standalone { height: 100dvh; max-width: 480px; margin: 0 auto; }
+@media (min-width: 560px) {
+  .m-standalone { height: min(100dvh, 920px); margin-top: max(0px, calc((100dvh - 920px) / 2)); overflow: hidden; border-radius: 44px; box-shadow: 0 0 0 1px #2a2a2c, 0 40px 100px rgba(0, 0, 0, .6); }
+}
+
+.m-chip-input { width: 150px; outline: none; background: var(--m-field); font: inherit; font-size: 13px; font-weight: 600; }
+.m-chip-input::placeholder { color: var(--m-faint); }
+.m-chip-input:focus { border-color: var(--m-purple); }
+.m-sheet--tall .m-sheet-body { gap: 14px; }
+.m-sheet--tall .m-key { height: 50px; }

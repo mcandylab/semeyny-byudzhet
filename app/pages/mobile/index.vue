@@ -17,10 +17,9 @@ const extraColors = [
 
 const groups = [
   { title: "Старт и обзор", frames: [
-    { title: "Первый запуск", note: "Без семейной ссылки: создать бюджет или восстановить копию", screen: "welcome" },
+    { title: "Вход", note: "Логин и пароль без почты или код приглашения от владельца", screen: "welcome" },
     { title: "Обзор месяца", note: "Свободный остаток, обе выплаты, конверты и последние операции", screen: "home" },
-    { title: "Выбор месяца", note: "Шторка поверх обзора", screen: "home", sheet: "month" },
-    { title: "Найдена прежняя версия", note: "Когда на устройстве остались неотправленные записи", screen: "home", sheet: "recovery" }
+    { title: "Выбор месяца", note: "Шторка поверх обзора", screen: "home", sheet: "month" }
   ] },
   { title: "Выплаты", frames: [
     { title: "Выплата 20-го", note: "Расчёт по рабочим дням и расходы с отметкой «оплачено»", screen: "payday", payday: 20 },
@@ -29,7 +28,8 @@ const groups = [
   ] },
   { title: "Конверты", frames: [
     { title: "Конверты и история", note: "Остатки, распределение и отмена операции свайпом", screen: "envelopes" },
-    { title: "Новая операция", note: "Покупка или пополнение с цифровой клавиатурой", screen: "envelopes", sheet: "operation" }
+    { title: "Новая операция", note: "Покупка или пополнение с цифровой клавиатурой", screen: "envelopes", sheet: "operation" },
+    { title: "Конверт", note: "Название, категория, остаток и архив", screen: "envelopes", sheet: "envelope" }
   ] },
   { title: "Цели", frames: [
     { title: "Цели", note: "Сколько собрано и сколько откладываем в этом месяце", screen: "goals" },
@@ -38,7 +38,8 @@ const groups = [
   { title: "Аналитика и настройки", frames: [
     { title: "Куда уходит зарплата", note: "Категории расходов и нагрузка на каждую выплату", screen: "analytics" },
     { title: "Настройки", note: "Зарплата, десятина, рабочие дни и резервные копии", screen: "settings" },
-    { title: "Семейная ссылка", note: "Передача доступа второму человеку", screen: "settings", sheet: "share" },
+    { title: "Семья", note: "Участники и одноразовые коды приглашения", screen: "settings", sheet: "family" },
+    { title: "Аккаунт", note: "Имя и смена пароля", screen: "settings", sheet: "account" },
     { title: "Памятка", note: "Редактируемая заметка про кредитки", screen: "home", sheet: "note" }
   ] }
 ];
@@ -57,7 +58,7 @@ function prototypeLink(frame) {
       <div>
         <p class="g-kicker">Семейный бюджет · мобильное приложение</p>
         <h1 class="g-title"><b>Экраны</b> приложения</h1>
-        <p class="g-lead">Только дизайн: суммы демонстрационные, данные никуда не сохраняются. Внутри каждого телефона можно нажимать — переключать вкладки, открывать шторки, отмечать оплату.</p>
+        <p class="g-lead">Демо-данные в памяти: суммы придуманные, ничего не сохраняется. Внутри каждого телефона можно нажимать — переключать вкладки, записывать операции, отмечать оплату. Рабочее приложение с общим бюджетом — по адресу /app.</p>
       </div>
       <NuxtLink to="/mobile/app" class="g-cta">Открыть прототип <span aria-hidden="true">→</span></NuxtLink>
     </header>
@@ -91,7 +92,7 @@ function prototypeLink(frame) {
       <div class="g-rule"><h2 class="g-pill">{{ group.title }}</h2></div>
       <div class="g-row">
         <figure v-for="frame in group.frames" :key="frame.title" class="g-frame">
-          <div class="g-phone"><MobileApp :screen="frame.screen" :sheet="frame.sheet" :payday="frame.payday" /></div>
+          <div class="g-phone"><MobileApp :signed-out="frame.screen === 'welcome'" :screen="frame.screen === 'welcome' ? 'home' : frame.screen" :sheet="frame.sheet" :payday="frame.payday" /></div>
           <figcaption>
             <b>{{ frame.title }}</b>
             <span>{{ frame.note }}</span>
