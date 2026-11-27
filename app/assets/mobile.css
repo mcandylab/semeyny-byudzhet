@@ -1,6 +1,9 @@
-/* Мобильный дизайн семейного бюджета (/mobile).
-   Все классы начинаются с m-, чтобы не пересекаться со стилями основной страницы. */
+/* Стили семейного бюджета: приложение (/) и галерея экранов (/mobile).
+   Классы начинаются с m-. */
 
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; background: #0b0b0c; color-scheme: dark; }
+body { min-width: 320px; }
 html.m-html,
 html.m-html body { background: #0b0b0c; color-scheme: dark; }
 html.m-gallery-html,

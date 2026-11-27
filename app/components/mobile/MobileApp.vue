@@ -1,5 +1,4 @@
 <script setup>
-import "~/assets/mobile.css";
 import { createDemoApi } from "~/utils/family-demo";
 
 const props = defineProps({

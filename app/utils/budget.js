@@ -1,3 +1,6 @@
+// Budget math of the family budget, kept from the first version of the app:
+// the mobile app and scripts/legacy-*.mjs both rely on the same totals.
+
 export const CATEGORIES = {
   housing: "Жильё и связь",
   bank: "Банки и переводы",
@@ -21,14 +24,6 @@ const HOLIDAYS = new Set([
 ]);
 const EXTRA_WORKDAYS = new Set(["2027-02-20"]);
 
-const moneyFormatter = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
-export const dateFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-export const monthFormatter = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" });
-
-export function money(value) {
-  return moneyFormatter.format(Math.round(Number(value) || 0));
-}
-
 export function pad(number) {
   return String(number).padStart(2, "0");
 }
@@ -45,21 +40,6 @@ export function parseMonth(month) {
 function currentMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
-}
-
-export function blankState() {
-  return {
-    version: 1,
-    month: currentMonth(),
-    settings: { salary: 0, titheRate: 10 },
-    workdays: {},
-    expenses: [],
-    balances: [],
-    goals: [],
-    purchases: [],
-    creditNote: "",
-    updatedAt: new Date().toISOString()
-  };
 }
 
 export function normalizeState(value) {
@@ -149,7 +129,7 @@ function adjustedPayday(date) {
   return result;
 }
 
-export function sumItems(items) {
+function sumItems(items) {
   return items.reduce((total, item) => total + (Number(item.amount) || 0), 0);
 }
 
@@ -242,46 +222,9 @@ export function calculate(state) {
   };
 }
 
-export function bytesToBase64Url(bytes) {
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 8192) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + 8192));
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
+// Legacy family links and Supabase rows (scripts/legacy-export.mjs) carry base64url data.
 export function base64UrlToBytes(value) {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
   const binary = atob(base64);
   return Uint8Array.from(binary, char => char.charCodeAt(0));
-}
-
-export async function encodeState(value) {
-  const bytes = new TextEncoder().encode(JSON.stringify(value));
-  if (typeof CompressionStream === "undefined") return `raw.${bytesToBase64Url(bytes)}`;
-  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
-  const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
-  return `v1.${bytesToBase64Url(compressed)}`;
-}
-
-export async function decodeState(hash) {
-  const [format, encoded] = hash.replace(/^#/, "").split(".");
-  if (!encoded || !["v1", "raw"].includes(format)) throw new Error("Ссылка не содержит данных бюджета");
-  const bytes = base64UrlToBytes(encoded);
-  let unpacked = bytes;
-  if (format === "v1") {
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-    unpacked = new Uint8Array(await new Response(stream).arrayBuffer());
-  }
-  return normalizeState(JSON.parse(new TextDecoder().decode(unpacked)));
-}
-
-export function formatUpdatedAt(value) {
-  return new Date(value).toLocaleString("ru-RU", {
-    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
-  });
-}
-
-export function formatShortDate(value) {
-  return new Date(value + "T12:00:00").toLocaleDateString("ru-RU");
 }

@@ -1,5 +1,5 @@
 <script setup>
-// Demo data in memory: the real app over PocketBase is at /app.
+// Demo data in memory: the real app over PocketBase is at /.
 const SCREENS = ["welcome", "home", "payday", "envelopes", "goals", "analytics", "settings"];
 const SHEETS = ["month", "expense", "operation", "envelope", "goal", "note", "salary", "family", "account"];
 

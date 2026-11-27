@@ -1,18 +1,16 @@
 export default defineNuxtConfig({
   compatibilityDate: "2026-11-27",
-  css: ["~/assets/styles.css"],
+  css: ["~/assets/mobile.css"],
   runtimeConfig: {
-    supabaseUrl: "",
-    supabaseKey: "",
     public: {
       // Where the browser reaches PocketBase. In development /pb is proxied below;
       // override with NUXT_PUBLIC_POCKETBASE_URL when PocketBase lives elsewhere.
       pocketbaseUrl: "/pb"
     }
   },
-  // The real app keeps its session in the browser, so it is rendered only there.
+  // The app keeps its session in the browser, so it is rendered only there.
   routeRules: {
-    "/app": { ssr: false }
+    "/": { ssr: false }
   },
   nitro: {
     devProxy: {
@@ -24,7 +22,7 @@ export default defineNuxtConfig({
       title: "Семейный бюджет",
       htmlAttrs: { lang: "ru" },
       meta: [
-        { name: "theme-color", content: "#173f35" },
+        { name: "theme-color", content: "#121212" },
         { name: "robots", content: "noindex, nofollow, noarchive" }
       ]
     }

@@ -20,7 +20,7 @@ const ATTEMPTS = 6;
 
 const clone = value => JSON.parse(JSON.stringify(value));
 
-// Same reducer as applyAction in app/utils/budget-sync.js, copied so the old page stays untouched.
+// The sync reducer of the old app (applyAction in its budget-sync.js).
 function applyAction(state, action) {
   const result = clone(state);
   if (action.kind === "set") {
