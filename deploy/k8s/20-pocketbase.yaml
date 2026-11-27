@@ -1,0 +1,162 @@
+# PocketBase with the family budget: one stateful pod with its database on a
+# local-path volume. It also serves the static app (public/), so the browser
+# reaches the API on the same origin.
+#
+# The app files, migrations and hooks come from the money-app ConfigMap, which
+# scripts/deploy-k8s.sh builds. The PocketBase binary is downloaded from GitHub
+# once, checked against the pinned SHA-256 and cached on the volume.
+apiVersion: v1
+kind: Service
+metadata:
+  name: pocketbase-headless
+  namespace: money
+spec:
+  clusterIP: None
+  selector:
+    app: pocketbase
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pocketbase
+  namespace: money
+spec:
+  selector:
+    app: pocketbase
+  ports:
+    # Numeric targetPort: net-kourier ignores named ones and would route to port 0.
+    - name: http
+      port: 80
+      targetPort: 8090
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pocketbase
+  namespace: money
+spec:
+  serviceName: pocketbase-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pocketbase
+  template:
+    metadata:
+      labels:
+        app: pocketbase
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: install
+          image: alpine:3.22
+          env:
+            - name: PB_VERSION
+              value: "0.40.6"
+            - name: PB_SHA256
+              value: 0e1f609158ed945f809f8a02ae012aa0427129c66ebb63c1aee76f2c0309373f
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              mkdir -p /pb/data /pb/cache
+              zip="/pb/cache/pocketbase_${PB_VERSION}_linux_amd64.zip"
+              if ! echo "${PB_SHA256}  ${zip}" | sha256sum -c -s 2>/dev/null; then
+                wget -q -O "${zip}.tmp" "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip"
+                echo "${PB_SHA256}  ${zip}.tmp" | sha256sum -c -s
+                mv "${zip}.tmp" "${zip}"
+              fi
+              mkdir -p /app/bin
+              unzip -q -o "${zip}" pocketbase -d /app/bin
+              tar xzf /bundle/bundle.tgz -C /app
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /pb
+            - name: app
+              mountPath: /app
+            - name: bundle
+              mountPath: /bundle
+              readOnly: true
+      containers:
+        - name: pocketbase
+          image: alpine:3.22
+          command:
+            - /app/bin/pocketbase
+            - serve
+            - --http=0.0.0.0:8090
+            - --dir=/pb/data
+            - --publicDir=/app/public
+            - --hooksDir=/app/pb_hooks
+            - --migrationsDir=/app/pb_migrations
+            # The schema changes only through pb_migrations in git.
+            - --automigrate=false
+          env:
+            - name: FAMILY_PUBLIC_HOST
+              value: money.mcandylab.ru
+          ports:
+            - name: http
+              containerPort: 8090
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8090
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /pb
+            - name: app
+              mountPath: /app
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: app
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: bundle
+          configMap:
+            name: money-app
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi

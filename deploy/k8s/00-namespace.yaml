@@ -1,0 +1,10 @@
+# The family budget lives apart from the nodbox platform: its own namespace,
+# no tenant labels, no gVisor, only the shared Kourier ingress and cert-manager.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: money
+  labels:
+    app.kubernetes.io/part-of: money
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

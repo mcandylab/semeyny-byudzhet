@@ -2,7 +2,8 @@
    Классы начинаются с m-. */
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; background: #0b0b0c; color-scheme: dark; }
+/* No grey or blue tap flash on phones: buttons show their own pressed states. */
+html, body { margin: 0; background: #0b0b0c; color-scheme: dark; -webkit-tap-highlight-color: transparent; }
 body { min-width: 320px; }
 html.m-html,
 html.m-html body { background: #0b0b0c; color-scheme: dark; }

@@ -8,11 +8,14 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "generate": "nuxt generate",
     "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "pb:install": "sh scripts/pocketbase-install.sh",
     "pb": "./pocketbase/pocketbase --dir pocketbase/pb_data --migrationsDir pocketbase/pb_migrations --hooksDir pocketbase/pb_hooks",
     "pb:serve": "npm run pb -- serve --http 127.0.0.1:8090",
-    "legacy:migrate": "sh scripts/legacy-migrate.sh"
+    "legacy:migrate": "sh scripts/legacy-migrate.sh",
+    "deploy:k8s": "sh scripts/deploy-k8s.sh",
+    "legacy:sync:k8s": "sh scripts/k8s-legacy-sync.sh"
   },
   "dependencies": {
     "nuxt": "^4.7.0",

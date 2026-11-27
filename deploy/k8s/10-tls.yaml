@@ -1,0 +1,65 @@
+# Let's Encrypt certificate for money.mcandylab.ru, issued without the nodbox
+# platform: the issuer points cert-manager at an ingress class nobody serves,
+# and 30-ingress.yaml routes the HTTP-01 challenge path to the solver pod by
+# its label. Until the real certificate arrives, the secret holds a temporary
+# self-signed one, so Kourier always finds it.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt
+  namespace: money
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: money-acme-unrouted
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: money-tls
+  namespace: money
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+spec:
+  secretName: money-tls
+  dnsNames:
+    - money.mcandylab.ru
+  issuerRef:
+    kind: Issuer
+    name: letsencrypt
+  privateKey:
+    rotationPolicy: Always
+---
+# The solver pod exists only while a challenge is open.
+apiVersion: v1
+kind: Service
+metadata:
+  name: acme-solver-pods
+  namespace: money
+spec:
+  selector:
+    acme.cert-manager.io/http01-solver: "true"
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8089
+---
+# The KIngress points at this ExternalName instead: net-kourier stops updating an
+# ingress while any of its backends has no ready endpoints, which would freeze
+# the old certificate after every renewal. ExternalName backends are not checked.
+apiVersion: v1
+kind: Service
+metadata:
+  name: acme-solver
+  namespace: money
+spec:
+  type: ExternalName
+  externalName: acme-solver-pods.money.svc.cluster.local
+  ports:
+    - name: http
+      port: 80

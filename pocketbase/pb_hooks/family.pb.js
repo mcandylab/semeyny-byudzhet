@@ -3,6 +3,22 @@
 // Server rules of the family budget that API rules alone cannot express,
 // plus console commands for the master account, invites and data transfer.
 
+// On the public domain (FAMILY_PUBLIC_HOST, set in deploy/k8s) the admin UI and superuser
+// sign-in are hidden: the admin opens them through kubectl port-forward instead. Plain HTTP
+// from the ingress is sent to HTTPS; the ingress answers ACME challenges before this point.
+routerUse((e) => {
+  const publicHost = $os.getenv("FAMILY_PUBLIC_HOST");
+  if (!publicHost || e.request.host !== publicHost) return e.next();
+  const path = e.request.url.path;
+  if (path === "/_" || path.startsWith("/_/") || path.startsWith("/api/collections/_superusers/")) {
+    throw new NotFoundError();
+  }
+  if (e.request.header.get("X-Forwarded-Proto") === "http") {
+    return e.redirect(301, `https://${publicHost}${e.request.url.requestURI()}`);
+  }
+  return e.next();
+});
+
 // Joining the family: an invite code from the owner, a username and a password.
 // Rate limited in settings (pb_migrations/1795806001_family_settings.js).
 routerAdd("POST", "/api/family/join", (e) => {

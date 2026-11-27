@@ -12,3 +12,4 @@ sync-account.local.json
 pocketbase/pocketbase
 pocketbase/pb_data/
 pocketbase/import/
+dist

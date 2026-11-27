@@ -1,0 +1,34 @@
+# money.mcandylab.ru on the shared Kourier gateway: the home router forwards the
+# public ports 80 and 443 there. TLS comes from 10-tls.yaml.
+apiVersion: networking.internal.knative.dev/v1alpha1
+kind: Ingress
+metadata:
+  name: money
+  namespace: money
+  annotations:
+    networking.knative.dev/ingress.class: kourier.ingress.networking.knative.dev
+spec:
+  # HTTP stays open for the ACME challenge; PocketBase redirects the rest to HTTPS.
+  httpOption: Enabled
+  tls:
+    - hosts:
+        - money.mcandylab.ru
+      secretName: money-tls
+      secretNamespace: money
+  rules:
+    - hosts:
+        - money.mcandylab.ru
+      visibility: ExternalIP
+      http:
+        paths:
+          - path: /.well-known/acme-challenge/
+            splits:
+              - percent: 100
+                serviceName: acme-solver
+                serviceNamespace: money
+                servicePort: 80
+          - splits:
+              - percent: 100
+                serviceName: pocketbase
+                serviceNamespace: money
+                servicePort: 80
