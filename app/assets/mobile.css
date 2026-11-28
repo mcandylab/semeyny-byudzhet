@@ -5,6 +5,10 @@
 *, *::before, *::after { box-sizing: border-box; }
 /* No grey or blue tap flash on phones: buttons show their own pressed states. */
 html, body { margin: 0; background: #0b0b0c; color-scheme: dark; -webkit-tap-highlight-color: transparent; }
+/* No zoom on a double tap (the viewport tag in nuxt.config.js stops it on inputs);
+   no rubber-banding of the whole page under the app. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }
+:where(html, body, .m-app, .m-app *) { touch-action: manipulation; }
 body { min-width: 320px; }
 html.m-html,
 html.m-html body { background: #0b0b0c; color-scheme: dark; }
@@ -705,10 +709,12 @@ html.m-gallery-html body { background: #ebebeb; }
 .m-profile-body .m-profile-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .m-set-row--danger .m-set-label { color: var(--m-red); }
 
-/* Телефон в браузере: приложение на весь экран, на компьютере — колонка шириной телефона. */
-.m-standalone { height: 100dvh; max-width: 480px; margin: 0 auto; }
+/* Телефон: приложение прибито к краям экрана. Не 100dvh — на iPhone в приложении с
+   рабочего стола эта высота не совпадает с экраном, и нижнее меню уезжает за край.
+   На компьютере — колонка шириной телефона. */
+.m-standalone { position: fixed; inset: 0; max-width: 480px; margin: 0 auto; }
 @media (min-width: 560px) {
-  .m-standalone { height: min(100dvh, 920px); margin-top: max(0px, calc((100dvh - 920px) / 2)); overflow: hidden; border-radius: 44px; box-shadow: 0 0 0 1px #2a2a2c, 0 40px 100px rgba(0, 0, 0, .6); }
+  .m-standalone { position: relative; inset: auto; height: min(100dvh, 920px); margin-top: max(0px, calc((100dvh - 920px) / 2)); overflow: hidden; border-radius: 44px; box-shadow: 0 0 0 1px #2a2a2c, 0 40px 100px rgba(0, 0, 0, .6); }
 }
 
 .m-chip-input { width: 150px; outline: none; background: var(--m-field); font: inherit; font-size: 13px; font-weight: 600; }
@@ -725,3 +731,9 @@ html.m-gallery-html body { background: #ebebeb; }
 .m-light .m-pay-card--white .m-pay-card-chip { background: rgba(255, 255, 255, .18); }
 .m-light .m-nav-add { box-shadow: 0 14px 30px rgba(27, 134, 171, .25); }
 html.m-html--light .m-standalone { box-shadow: 0 0 0 1px #d6d6dd, 0 40px 100px rgba(20, 20, 45, .18); }
+/* On the home screen the status bar text is always white (black-translucent in nuxt.config.js),
+   so the light theme keeps a dark strip under it to keep the clock readable. */
+html[data-standalone] .m-app.m-light::after {
+  content: ""; position: absolute; top: 0; right: 0; left: 0; z-index: 40; height: env(safe-area-inset-top, 0px);
+  background: #121212; pointer-events: none;
+}

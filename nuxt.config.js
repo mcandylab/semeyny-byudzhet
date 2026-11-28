@@ -30,14 +30,24 @@ export default defineNuxtConfig({
     head: {
       title: "Семейный бюджет",
       htmlAttrs: { lang: "ru" },
+      // These must be in the HTML the phone loads first: an app on the iPhone home screen
+      // reads them at launch, before any script runs. No zooming: the screens are drawn
+      // for the phone, and Safari would otherwise zoom on a double tap or into small inputs.
+      viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       meta: [
         { name: "theme-color", content: "#121212" },
-        { name: "robots", content: "noindex, nofollow, noarchive" }
+        { name: "robots", content: "noindex, nofollow, noarchive" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-title", content: "Бюджет" },
+        // The page runs under the status bar and keeps clear of it with safe-area insets.
+        { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" }
       ],
-      // Applies the saved light theme before the app starts (composables/useTheme.js).
+      // Applies the saved light theme before the app starts (composables/useTheme.js)
+      // and marks a launch from the home screen (assets/mobile.css).
       script: [{
         tagPosition: "head",
-        innerHTML: "try{var t=localStorage.getItem('semeyny-byudzhet:theme');if(t==='light'||(t==='system'&&matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.classList.add('m-html--light')}catch(e){}"
+        innerHTML: "try{var d=document.documentElement;if(navigator.standalone||matchMedia('(display-mode: standalone)').matches)d.setAttribute('data-standalone','');var t=localStorage.getItem('semeyny-byudzhet:theme');if(t==='light'||(t==='system'&&matchMedia('(prefers-color-scheme: light)').matches))d.classList.add('m-html--light')}catch(e){}"
       }]
     }
   }

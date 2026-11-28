@@ -10,14 +10,7 @@ const sheet = SHEETS.includes(route.query.sheet) ? route.query.sheet : "";
 const payday = route.query.payday === "5" ? 5 : 20;
 
 useMobileDesign("m-html", "#121212");
-useHead({
-  title: "Семейный бюджет — прототип",
-  meta: [
-    { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-    { name: "apple-mobile-web-app-capable", content: "yes" },
-    { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" }
-  ]
-});
+useHead({ title: "Семейный бюджет — прототип" });
 </script>
 
 <template>
