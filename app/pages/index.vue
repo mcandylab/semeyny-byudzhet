@@ -9,7 +9,12 @@ const budget = createFamilyBudget(createPocketbaseApi(pocketbaseUrl));
 onMounted(() => budget.attach());
 onBeforeUnmount(() => budget.detach());
 
-useMobileDesign("m-html", "#121212");
+// The page and the browser bar follow the chosen theme.
+const { light } = useTheme();
+useMobileDesign(
+  computed(() => (light.value ? "m-html m-html--light" : "m-html")),
+  computed(() => (light.value ? "#f2f2f5" : "#121212"))
+);
 useHead({
   title: "Семейный бюджет",
   meta: [
@@ -17,7 +22,7 @@ useHead({
     { name: "apple-mobile-web-app-capable", content: "yes" },
     { name: "mobile-web-app-capable", content: "yes" },
     { name: "apple-mobile-web-app-title", content: "Бюджет" },
-    { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" }
+    { name: "apple-mobile-web-app-status-bar-style", content: computed(() => (light.value ? "default" : "black-translucent")) }
   ]
 });
 </script>

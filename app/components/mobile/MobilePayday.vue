@@ -15,7 +15,7 @@ const paidCount = computed(() => items.value.filter(item => item.paid).length);
 const distributed = computed(() => pay.value.expenses + pay.value.tithe + pay.value.goalAllocated);
 const bar = computed(() => [
   { key: "expenses", label: "Расходы", value: pay.value.expenses, color: "var(--m-purple)" },
-  { key: "tithe", label: `Десятина ${budget.household?.tithe_rate || 0}%`, value: pay.value.tithe, color: "var(--m-white)" },
+  { key: "tithe", label: `Десятина ${budget.household?.tithe_rate || 0}%`, value: pay.value.tithe, color: "var(--m-contrast)" },
   { key: "goals", label: "На цели", value: pay.value.goalAllocated, color: "var(--m-cyan)" }
 ]);
 const due = goal => (goal.dueDate ? `к ${longDate(goal.dueDate)}` : "Без срока");
@@ -106,7 +106,7 @@ const due = goal => (goal.dueDate ? `к ${longDate(goal.dueDate)}` : "Без с�
       </div>
       <ul class="m-list m-list--card">
         <li v-for="goal in savings" :key="goal.id" class="m-row">
-          <span class="m-row-icon m-row-icon--sm" style="color: var(--m-cyan)"><MobileIcon name="target" :size="20" /></span>
+          <span class="m-row-icon m-row-icon--sm" style="color: var(--m-cyan-text)"><MobileIcon name="target" :size="20" /></span>
           <button class="m-row-main" type="button" @click="$emit('open', 'goal', goal)">
             <span class="m-row-title">{{ goal.name }}</span>
             <span class="m-row-meta">{{ due(goal) }}</span>

@@ -47,7 +47,7 @@ async function revoke(item) {
   <MobileSheet title="Семья" eyebrow="Кто видит и ведёт бюджет" @close="$emit('close')">
     <ul class="m-list m-list--card">
       <li v-for="member in budget.members" :key="member.id" class="m-row">
-        <span class="m-row-icon m-row-icon--sm" :style="{ color: member.role === 'owner' ? 'var(--m-purple-light)' : 'var(--m-cyan)' }"><MobileIcon name="family" :size="20" /></span>
+        <span class="m-row-icon m-row-icon--sm" :style="{ color: member.role === 'owner' ? 'var(--m-purple-light)' : 'var(--m-cyan-text)' }"><MobileIcon name="family" :size="20" /></span>
         <span class="m-row-main">
           <span class="m-row-title">{{ member.name || member.username }}<template v-if="member.id === budget.user?.id"> · вы</template></span>
           <span class="m-row-meta">@{{ member.username }} · {{ member.role === 'owner' ? 'владелец' : 'участник' }}</span>

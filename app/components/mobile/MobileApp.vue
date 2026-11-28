@@ -11,6 +11,7 @@ const props = defineProps({
 });
 
 const budget = props.store || createFamilyBudget(createDemoApi({ signedIn: !props.signedOut }));
+const { light } = useTheme();
 provideFamilyBudget(budget);
 
 const tabs = [
@@ -59,7 +60,7 @@ watch(() => budget.phase, phase => {
 </script>
 
 <template>
-  <div class="m-app" @keydown.esc="close">
+  <div class="m-app" :class="{ 'm-light': light }" @keydown.esc="close">
     <div ref="scroller" class="m-scroll" :class="{ 'm-scroll--nav': showNav }">
       <Transition name="m-fade" mode="out-in">
         <MobileWelcome v-if="budget.phase === 'signed-out'" key="welcome" />

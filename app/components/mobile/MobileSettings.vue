@@ -63,6 +63,12 @@ function resetDays() {
 
 const manual = computed(() => first.value !== auto.value.first || second.value !== auto.value.second);
 const me = computed(() => budget.user);
+const { choice: theme, setTheme } = useTheme();
+const themes = [
+  { value: "dark", label: "Тёмная" },
+  { value: "light", label: "Светлая" },
+  { value: "system", label: "Авто" }
+];
 
 function download() {
   const blob = new Blob([`${JSON.stringify(budget.backup(), null, 2)}\n`], { type: "application/json" });
@@ -97,15 +103,31 @@ onBeforeUnmount(() => {
       <MobileIcon name="chevron-right" :size="18" class="m-faint" />
     </button>
 
+    <p class="m-group-title">Оформление</p>
+    <div class="m-segment m-segment--theme" role="radiogroup" aria-label="Тема оформления">
+      <button
+        v-for="item in themes"
+        :key="item.value"
+        type="button"
+        role="radio"
+        :aria-checked="theme === item.value"
+        :class="{ on: theme === item.value }"
+        @click="setTheme(item.value)"
+      >
+        {{ item.label }}
+      </button>
+    </div>
+    <p class="m-hint">«Авто» — как в настройках телефона. Выбор хранится на этом устройстве.</p>
+
     <p class="m-group-title">Зарплата</p>
     <div class="m-group">
       <button class="m-set-row" type="button" @click="$emit('open', 'salary')">
-        <span class="m-set-icon" style="--c: #A98BF5"><MobileIcon name="ruble" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-purple-light)"><MobileIcon name="ruble" :size="20" /></span>
         <span class="m-set-label"><small>Зарплата за полный месяц</small><span class="m-set-big"><MobileMoney :value="budget.household?.salary || 0" /></span></span>
         <MobileIcon name="edit" :size="20" class="m-faint" />
       </button>
       <div class="m-set-row">
-        <span class="m-set-icon" style="--c: #FCFCFC"><MobileIcon name="heart" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-contrast)"><MobileIcon name="heart" :size="20" /></span>
         <span class="m-set-label">Десятина<small>От каждой выплаты</small></span>
         <div class="m-stepper">
           <button type="button" aria-label="Уменьшить десятину" :disabled="tithe <= 0" @click="stepTithe(-1)"><MobileIcon name="minus" :size="16" /></button>
@@ -119,7 +141,7 @@ onBeforeUnmount(() => {
     <p class="m-group-title">Рабочие дни · {{ month.title.toLowerCase() }} {{ month.year }}</p>
     <div class="m-group">
       <div class="m-set-row">
-        <span class="m-set-icon" style="--c: #723FEB"><MobileIcon name="calendar" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-purple)"><MobileIcon name="calendar" :size="20" /></span>
         <span class="m-set-label">С 1 по 15 число<small>Выплата 20-го</small></span>
         <div class="m-stepper">
           <button type="button" aria-label="Меньше дней в первой половине" :disabled="first <= 0" @click="stepDays('first', -1)"><MobileIcon name="minus" :size="16" /></button>
@@ -128,7 +150,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="m-set-row">
-        <span class="m-set-icon" style="--c: #97E0F7"><MobileIcon name="calendar" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-cyan-text)"><MobileIcon name="calendar" :size="20" /></span>
         <span class="m-set-label">С 16 по {{ auto.days }} число<small>Выплата 5-го</small></span>
         <div class="m-stepper">
           <button type="button" aria-label="Меньше дней во второй половине" :disabled="second <= 0" @click="stepDays('second', -1)"><MobileIcon name="minus" :size="16" /></button>
@@ -137,7 +159,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="m-set-row">
-        <span class="m-set-icon" style="--c: #8E8E93"><MobileIcon name="clock" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-cat-pets)"><MobileIcon name="clock" :size="20" /></span>
         <span class="m-set-label">Всего {{ plural(first + second, ['день', 'дня', 'дней']) }}<small>{{ manual ? 'Изменено вручную' : 'По календарю' }}</small></span>
         <button v-if="manual" class="m-chip m-chip--button m-chip--sm" type="button" @click="resetDays">Сбросить</button>
         <span v-else class="m-chip m-chip--green m-chip--sm"><MobileIcon name="check" :size="14" />Авто</span>
@@ -148,12 +170,12 @@ onBeforeUnmount(() => {
     <p class="m-group-title">Семья</p>
     <div class="m-group">
       <button class="m-set-row" type="button" @click="$emit('open', 'family')">
-        <span class="m-set-icon" style="--c: #97E0F7"><MobileIcon name="family" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-cyan-text)"><MobileIcon name="family" :size="20" /></span>
         <span class="m-set-label">{{ plural(budget.members.length, ['участник', 'участника', 'участников']) }}<small>{{ budget.isOwner ? 'Пригласить по коду, управлять доступом' : budget.members.map(item => item.name || item.username).join(', ') }}</small></span>
         <MobileIcon name="chevron-right" :size="18" class="m-faint" />
       </button>
       <div class="m-set-row">
-        <span class="m-set-icon" :style="{ '--c': budget.online ? '#34C77B' : '#F0DC78' }"><MobileIcon name="cloud" :size="20" /></span>
+        <span class="m-set-icon" :style="{ '--c': budget.online ? 'var(--m-green)' : 'var(--m-warn)' }"><MobileIcon name="cloud" :size="20" /></span>
         <span class="m-set-label">Синхронизация<small>Изменения сразу видны всей семье</small></span>
         <span class="m-set-value" :class="{ 'm-set-value--ok': budget.online }">{{ budget.demo ? 'Демо' : budget.online ? 'Включена' : 'Нет связи' }}</span>
       </div>
@@ -162,12 +184,12 @@ onBeforeUnmount(() => {
     <p class="m-group-title">Данные</p>
     <div class="m-group">
       <button class="m-set-row" type="button" @click="download">
-        <span class="m-set-icon" style="--c: #FCFCFC"><MobileIcon name="download" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-contrast)"><MobileIcon name="download" :size="20" /></span>
         <span class="m-set-label">Скачать копию<small>Файл .json со всем бюджетом</small></span>
         <MobileIcon name="chevron-right" :size="18" class="m-faint" />
       </button>
       <button class="m-set-row m-set-row--danger" type="button" @click="budget.logout()">
-        <span class="m-set-icon" style="--c: #FF7A6E"><MobileIcon name="logout" :size="20" /></span>
+        <span class="m-set-icon" style="--c: var(--m-red)"><MobileIcon name="logout" :size="20" /></span>
         <span class="m-set-label">Выйти<small>На этом устройстве</small></span>
       </button>
     </div>

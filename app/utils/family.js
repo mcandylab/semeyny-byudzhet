@@ -3,17 +3,18 @@
 
 import { dateKey, pad, parseMonth } from "./budget";
 
+// Colours are CSS variables, so they follow the light or dark theme (assets/mobile.css).
 export const CATEGORY_META = {
-  housing: { label: "Жильё и связь", icon: "home", color: "#723FEB" },
-  food: { label: "Продукты и дом", icon: "cart", color: "#97E0F7" },
-  bank: { label: "Банки и переводы", icon: "card", color: "#FCFCFC" },
-  auto: { label: "Автомобиль", icon: "car", color: "#B49BFA" },
-  family: { label: "Семья", icon: "family", color: "#5BBFE0" },
-  pets: { label: "Питомцы", icon: "paw", color: "#8E8E93" },
-  personal: { label: "Личное и подписки", icon: "star", color: "#D9CCFF" },
-  obligations: { label: "Обязательное", icon: "receipt", color: "#C5EEFA" },
-  plans: { label: "Планы и покупки", icon: "gift", color: "#F0DC78" },
-  other: { label: "Другое", icon: "grid", color: "#636366" }
+  housing: { label: "Жильё и связь", icon: "home", color: "var(--m-cat-housing)" },
+  food: { label: "Продукты и дом", icon: "cart", color: "var(--m-cat-food)" },
+  bank: { label: "Банки и переводы", icon: "card", color: "var(--m-cat-bank)" },
+  auto: { label: "Автомобиль", icon: "car", color: "var(--m-cat-auto)" },
+  family: { label: "Семья", icon: "family", color: "var(--m-cat-family)" },
+  pets: { label: "Питомцы", icon: "paw", color: "var(--m-cat-pets)" },
+  personal: { label: "Личное и подписки", icon: "star", color: "var(--m-cat-personal)" },
+  obligations: { label: "Обязательное", icon: "receipt", color: "var(--m-cat-obligations)" },
+  plans: { label: "Планы и покупки", icon: "gift", color: "var(--m-cat-plans)" },
+  other: { label: "Другое", icon: "grid", color: "var(--m-cat-other)" }
 };
 
 export const categoryMeta = code => CATEGORY_META[code] || CATEGORY_META.other;

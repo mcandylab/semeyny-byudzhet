@@ -33,7 +33,12 @@ export default defineNuxtConfig({
       meta: [
         { name: "theme-color", content: "#121212" },
         { name: "robots", content: "noindex, nofollow, noarchive" }
-      ]
+      ],
+      // Applies the saved light theme before the app starts (composables/useTheme.js).
+      script: [{
+        tagPosition: "head",
+        innerHTML: "try{var t=localStorage.getItem('semeyny-byudzhet:theme');if(t==='light'||(t==='system'&&matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.classList.add('m-html--light')}catch(e){}"
+      }]
     }
   }
 });

@@ -10,10 +10,10 @@ const month = computed(() => monthInfo(budget.month));
 const R = 46;
 const C = 2 * Math.PI * R;
 const parts = computed(() => [
-  { key: "expenses", label: "расходы", value: calc.value.expenses, color: "#723FEB", width: 24 },
-  { key: "goals", label: "цели", value: calc.value.goalAllocated, color: "#97E0F7", width: 16 },
-  { key: "tithe", label: "десятина", value: calc.value.tithe, color: "#FCFCFC", width: 16 },
-  { key: "free", label: "свободно", value: Math.max(0, calc.value.unassigned), color: "#3A3A3C", width: 16 }
+  { key: "expenses", label: "расходы", value: calc.value.expenses, color: "var(--m-purple)", width: 24 },
+  { key: "goals", label: "цели", value: calc.value.goalAllocated, color: "var(--m-cyan)", width: 16 },
+  { key: "tithe", label: "десятина", value: calc.value.tithe, color: "var(--m-contrast)", width: 16 },
+  { key: "free", label: "свободно", value: Math.max(0, calc.value.unassigned), color: "var(--m-track)", width: 16 }
 ]);
 const whole = computed(() => Math.max(calc.value.salary, parts.value.reduce((total, part) => total + part.value, 0)));
 const percent = value => (whole.value ? Math.round(value / whole.value * 100) : 0);
@@ -68,7 +68,7 @@ const recent = computed(() => budget.operations.slice(0, 3));
         </div>
         <div class="m-donut">
           <svg viewBox="0 0 124 124" role="img" :aria-label="donutLabel">
-            <circle v-if="!segments.length" cx="62" cy="62" :r="R" fill="none" stroke="#3A3A3C" stroke-width="16" />
+            <circle v-if="!segments.length" cx="62" cy="62" :r="R" fill="none" style="stroke: var(--m-track)" stroke-width="16" />
             <circle
               v-for="segment in segments"
               :key="segment.key"
@@ -76,7 +76,7 @@ const recent = computed(() => budget.operations.slice(0, 3));
               cy="62"
               :r="R"
               fill="none"
-              :stroke="segment.color"
+              :style="{ stroke: segment.color }"
               :stroke-width="segment.width"
               :stroke-dasharray="segment.dash"
               :stroke-dashoffset="segment.offset"
